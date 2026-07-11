@@ -1,6 +1,8 @@
 import mongoose from 'mongoose';
 import crypto from 'crypto';
 
+// Bump commit to force a fresh Render build (no behavior change).
+
 const qrCodeSchema = new mongoose.Schema(
   {
     data: {
