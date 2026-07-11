@@ -30,6 +30,9 @@ export const courseAPI = {
   create: (data) => api.post("/courses", data),
   update: (id, data) => api.patch(`/courses/${id}`, data),
   delete: (id) => api.delete(`/courses/${id}`),
+  browse: () => api.get("/courses/browse"),
+  enrollSelf: (id) => api.post(`/courses/${id}/enroll-self`),
+  unenrollSelf: (id) => api.delete(`/courses/${id}/enroll-self`),
   enroll: (id, studentIds) => api.post(`/courses/${id}/enroll`, { studentIds }),
   removeStudent: (id, studentId) =>
     api.delete(`/courses/${id}/enroll/${studentId}`),

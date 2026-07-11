@@ -419,6 +419,39 @@ test('admin receives session:started via socket on session start', async () => {
   adminSocket.disconnect();
 }, 30000);
 
+test('student sees only enrolled courses in active sessions + can self-enroll', async () => {
+  // Regression: GET /sessions/active must scope to the student's enrolled
+  // courses (not all active sessions). And POST /courses/:id/enroll-self lets a
+  // student join a course themselves.
+  const student = await login('student1@college.edu', 'Student@123');
+
+  const browse = await api(student.token).get('/api/courses/browse');
+  ok('browse returns courses', Array.isArray(browse.body?.data?.courses), JSON.stringify(browse.body).slice(0, 80));
+  const courses = browse.body.data.courses;
+  const notEnrolled = courses.find((c) => !c.enrolled);
+  ok('there is a not-yet-enrolled course to join', !!notEnrolled);
+
+  if (notEnrolled) {
+    const enroll = await api(student.token).post(`/api/courses/${notEnrolled._id}/enroll-self`);
+    ok('student self-enroll returns 201', enroll.status === 201, `status ${enroll.status}`);
+
+    const mine = await api(student.token).get('/api/courses/my-courses');
+    const joined = (mine.body?.data?.courses || []).some(
+      (c) => c._id === notEnrolled._id
+    );
+    ok('joined course appears in my-courses', joined);
+  }
+
+  // Active sessions must only be for enrolled courses.
+  const active = await api(student.token).get('/api/sessions/active');
+  const activeSessions = active.body?.data?.sessions || [];
+  const enrolledIds = new Set(
+    (await api(student.token).get('/api/courses/my-courses')).body?.data?.courses?.map((c) => c._id) || []
+  );
+  const stray = activeSessions.filter((s) => s.course && !enrolledIds.has(s.course._id?.toString?.() || s.course.toString()));
+  ok('no active session from a non-enrolled course', stray.length === 0, `stray=${stray.length}`);
+}, 30000);
+
 afterAll(() => {
   console.log(
     `\n=== integration suite: ${fail === 0 ? 'ALL CHECKS PASSED' : fail + ' FAILED'} (${pass} passed, ${fail} failed) ===`

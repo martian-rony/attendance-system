@@ -16,6 +16,7 @@ router.use(protect);
 // All courses (role-filtered in controller)
 router.get('/', courseController.getCourses);
 router.get('/my-courses', courseController.getMyCourses);
+router.get('/browse', courseController.browseCourses);
 router.get('/departments', courseController.getDepartments);
 router.get('/academic-years', courseController.getAcademicYears);
 
@@ -26,6 +27,10 @@ router.post(
   validate(createCourseSchema),
   courseController.createCourse
 );
+
+// Student self-enrollment
+router.post('/:id/enroll-self', restrictTo('student'), courseController.enrollSelf);
+router.delete('/:id/enroll-self', restrictTo('student'), courseController.unenrollSelf);
 
 // Course-specific routes
 router.get('/:id', validate(idParamSchema), courseController.getCourse);

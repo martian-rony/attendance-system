@@ -142,6 +142,19 @@ const seedCourses = async (faculty, students) => {
 
   await Enrollment.insertMany(enrollments);
   logger.info(`Seeded ${enrollments.length} enrollments`);
+
+  // Keep Course.students in sync with the enrollment records (getMyCourses
+  // and other course-student queries rely on the course's students array).
+  const byCourse = {};
+  for (const e of enrollments) {
+    (byCourse[e.course.toString()] ||= []).push(e.student);
+  }
+  await Promise.all(
+    Object.entries(byCourse).map(([courseId, studentIds]) =>
+      Course.findByIdAndUpdate(courseId, { $addToSet: { students: { $each: studentIds } } })
+    )
+  );
+
   return created;
 };
 
