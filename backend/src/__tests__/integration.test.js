@@ -341,6 +341,84 @@ test('admin receives session:created via socket on session creation', async () =
   adminSocket.disconnect();
 }, 30000);
 
+test('admin creates user via /api/users without losing session', async () => {
+  // Regression: the admin "Add User" modal posts to POST /api/users (the
+  // admin-guarded endpoint), NOT the public /auth/register page. Confirm it
+  // returns 201 + the user, and does NOT clobber the admin's session.
+  const admin = await login('admin@college.edu', 'Admin@1234');
+  const agent = request.agent(BASE);
+  await agent
+    .post('/api/auth/login')
+    .set('Authorization', `Bearer ${admin.token}`)
+    .send({ email: 'admin@college.edu', password: 'Admin@1234' });
+
+  const email = `apiusr+${Date.now()}@college.edu`;
+  const res = await agent
+    .post('/api/users')
+    .set('Authorization', `Bearer ${admin.token}`)
+    .send({ email, password: 'Student@123', firstName: 'Api', lastName: 'User', role: 'student' });
+
+  ok('admin POST /api/users returns 201', res.status === 201, `status ${res.status}`);
+  ok('created user role is student', res.body?.data?.user?.role === 'student');
+  ok('no token pair issued', !res.body?.data?.tokens, JSON.stringify(Object.keys(res.body?.data || {})));
+
+  const check = await agent.get('/api/users').set('Authorization', `Bearer ${admin.token}`);
+  ok('admin still authorized after POST /api/users', check.status === 200, `status ${check.status}`);
+}, 30000);
+
+test('admin receives session:started via socket on session start', async () => {
+  // Regression: startSession must emit `session:started` to role:admin (not just
+  // the course room), so the admin Sessions list refreshes when a session starts.
+  const admin = await login('admin@college.edu', 'Admin@1234');
+  const faculty = await login('faculty1@college.edu', 'Faculty@123');
+
+  const adminSocket = io(BASE, { auth: { token: admin.token } });
+  const evtPromise = new Promise((res, rej) => {
+    adminSocket.on('session:started', res);
+    setTimeout(() => rej(new Error('no session:started event')), 6000);
+  });
+  await new Promise((res) => adminSocket.on('connect', res));
+
+  const now = new Date();
+  const localDate = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+  const courseRes = await api(admin.token).post('/api/courses', {
+    code: `STRT${Date.now().toString().slice(-4)}`,
+    name: 'Start Event Test Course',
+    department: 'Computer Science',
+    program: 'btech',
+    year: 1,
+    semester: 1,
+    credits: 3,
+    academicYear: '2024-2025',
+    faculty: faculty.user._id,
+  });
+  const courseId = courseRes.body.data?.course?._id;
+  const start = new Date(now.getTime() - 1 * 60 * 1000);
+  const end = new Date(now.getTime() + 60 * 60 * 1000);
+  const hhmm = (d) => `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
+  const sessRes = await api(faculty.token).post('/api/sessions', {
+    courseId,
+    title: 'Start Event Session',
+    date: localDate,
+    startTime: hhmm(start),
+    endTime: hhmm(end),
+    room: 'A-101',
+    location: { type: 'Point', coordinates: [77.209, 28.6139] },
+    geofenceRadius: 100,
+    settings: { requireGeolocation: true, lateThreshold: 15, allowLateEntry: true },
+    attendanceWindow: { openBefore: 10, closeAfter: 30 },
+  });
+  const sessionId = sessRes.body.data?.session?._id;
+  ok('session created for start-event test', !!sessionId, `status ${sessRes.status}`);
+
+  const startRes = await api(faculty.token).post(`/api/sessions/${sessionId}/start`);
+  ok('faculty starts session', startRes.status === 200, `status ${startRes.status}`);
+
+  const evt = await evtPromise.catch((e) => ({ error: e.message }));
+  ok('admin received session:started event', !!evt?.sessionId, JSON.stringify(evt));
+  adminSocket.disconnect();
+}, 30000);
+
 afterAll(() => {
   console.log(
     `\n=== integration suite: ${fail === 0 ? 'ALL CHECKS PASSED' : fail + ' FAILED'} (${pass} passed, ${fail} failed) ===`

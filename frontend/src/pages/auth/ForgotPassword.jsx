@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useForm } from "react-hook-form";
-import { Link } from "react-router-dom";
+import { Link, useSearchParams } from "react-router-dom";
 import {
   Button,
   Input,
@@ -67,6 +67,7 @@ export default function ForgotPassword() {
 }
 
 export function ResetPassword() {
+  const [searchParams] = useSearchParams();
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
   const [loading, setLoading] = useState(false);
@@ -74,8 +75,15 @@ export function ResetPassword() {
     register,
     handleSubmit,
     watch,
+    setValue,
     formState: { errors },
-  } = useForm();
+  } = useForm({
+    defaultValues: { token: searchParams.get("token") || "", password: "", confirmPassword: "" },
+  });
+
+  // If the link carried a token, surface it in the field automatically.
+  const urlToken = searchParams.get("token");
+  if (urlToken) setValue("token", urlToken, { shouldValidate: false });
   const password = watch("password");
 
   const onSubmit = async (data) => {
