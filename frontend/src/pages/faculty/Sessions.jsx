@@ -99,14 +99,21 @@ export default function FacultySessions() {
   };
 
   const createMutation = useMutation({
-    mutationFn: (payload) =>
-      sessionAPI.create({
+    mutationFn: (payload) => {
+      // Derive absolute UTC instants from the LOCAL wall-clock the faculty
+      // entered, so the server computes the attendance window in the correct
+      // instant regardless of its own timezone (fixes "attendance is closed"
+      // when server and faculty are in different timezones).
+      const toUTCISO = (d, t) => new Date(`${d}T${t}`).toISOString();
+      return sessionAPI.create({
         courseId: payload.courseId,
         title: payload.title,
         description: payload.notes || undefined,
         date: payload.date,
         startTime: payload.startTime,
         endTime: payload.endTime,
+        startDateTime: toUTCISO(payload.date, payload.startTime),
+        endDateTime: toUTCISO(payload.date, payload.endTime),
         room: payload.room,
         location:
           payload.latitude !== "" && payload.longitude !== ""
@@ -119,7 +126,8 @@ export default function FacultySessions() {
             : undefined,
         geofenceRadius: parseInt(payload.geofenceRadius) || 100,
         settings: { lateThreshold: parseInt(payload.lateThreshold) || 15 },
-      }),
+      });
+    },
     onSuccess: () => {
       queryClient.invalidateQueries(["faculty-sessions"]);
       setCreateOpen(false);

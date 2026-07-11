@@ -18,6 +18,8 @@ export const createSession = async (req, res, next) => {
       date,
       startTime,
       endTime,
+      startDateTime,
+      endDateTime,
       room,
       settings,
       location,
@@ -42,6 +44,12 @@ export const createSession = async (req, res, next) => {
       date: new Date(date),
       startTime,
       endTime,
+      // Absolute UTC instants derived by the client from its LOCAL wall-clock.
+      // Storing these decouples the attendance window from the server timezone
+      // so a session created "now" is immediately within its window regardless
+      // of where the server runs (Pitfall 16: never re-localize wall-clock).
+      startDateTime: startDateTime ? new Date(startDateTime) : undefined,
+      endDateTime: endDateTime ? new Date(endDateTime) : undefined,
       room,
       settings: {
         allowLateEntry: settings?.allowLateEntry ?? course.settings.allowLateEntry,

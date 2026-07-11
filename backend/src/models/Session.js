@@ -99,6 +99,10 @@ const sessionSchema = new mongoose.Schema(
       required: [true, 'End time is required'],
       match: /^([01]?[0-9]|2[0-3]):[0-5][0-9]$/,
     },
+    // Absolute UTC instants for the attendance window. Derived by the client
+    // from its LOCAL wall-clock so the window is timezone-stable on the server.
+    startDateTime: { type: Date },
+    endDateTime: { type: Date },
     room: {
       type: String,
       trim: true,
@@ -165,13 +169,14 @@ sessionSchema.virtual('isActive').get(function () {
   return this.status === 'active';
 });
 
-// Virtual for session datetime
+// Virtual for session datetime. Prefer the absolute UTC instant sent by the
+// client (timezone-stable). Fall back to reconstructing from the wall-clock
+// strings only for legacy docs that lack startDateTime.
 sessionSchema.virtual('sessionDateTime').get(function () {
+  if (this.startDateTime) return this.startDateTime;
   const [hours, minutes] = this.startTime.split(':');
-  // this.date is stored as UTC midnight; read its calendar Y/M/D locally so
-  // we don't accidentally shift by the timezone offset when applying startTime.
   const d = new Date(this.date);
-  const dt = new Date(
+  return new Date(
     d.getFullYear(),
     d.getMonth(),
     d.getDate(),
@@ -180,11 +185,11 @@ sessionSchema.virtual('sessionDateTime').get(function () {
     0,
     0
   );
-  return dt;
 });
 
 // Virtual for session end datetime
 sessionSchema.virtual('sessionEndDateTime').get(function () {
+  if (this.endDateTime) return this.endDateTime;
   const [hours, minutes] = this.endTime.split(':');
   const dt = new Date(this.date);
   dt.setHours(parseInt(hours), parseInt(minutes), 0, 0);
