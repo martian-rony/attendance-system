@@ -340,6 +340,11 @@ export const startSession = async (req, res, next) => {
       qrCode: session.qrCode.data,
       expiresAt: session.qrCode.expiresAt,
     });
+    // Also notify admins so their session list refreshes on start.
+    req.io?.to('role:admin').emit('session:started', {
+      sessionId: session._id,
+      courseId: session.course,
+    });
 
     // Generate QR code image
     const qrCodeImage = await QRCode.toDataURL(session.qrCode.data, {

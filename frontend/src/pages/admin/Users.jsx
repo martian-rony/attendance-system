@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useNavigate } from "react-router-dom";
+import { useForm } from "react-hook-form";
 import { Plus, Search, UserX, UserCheck } from "lucide-react";
 import { userAPI } from "../../api/index.js";
 import {
@@ -18,6 +19,12 @@ import {
 import { useAuth } from "../../contexts/AuthContext.jsx";
 import { useRealtimeInvalidation } from "../../hooks/useRealtimeInvalidation.js";
 
+const ROLES = [
+  { value: "faculty", label: "Faculty" },
+  { value: "student", label: "Student" },
+  { value: "admin", label: "Admin" },
+];
+
 export default function AdminUsers() {
   useRealtimeInvalidation();
   const { user: currentUser } = useAuth();
@@ -27,6 +34,23 @@ export default function AdminUsers() {
   const [roleFilter, setRoleFilter] = useState("");
   const [page, setPage] = useState(1);
   const [confirmDeactivate, setConfirmDeactivate] = useState(null);
+  const [createOpen, setCreateOpen] = useState(false);
+
+  const {
+    register,
+    handleSubmit,
+    reset,
+    formState: { errors, isSubmitting },
+  } = useForm({
+    defaultValues: {
+      firstName: "",
+      lastName: "",
+      email: "",
+      role: "student",
+      password: "",
+      confirmPassword: "",
+    },
+  });
 
   const { data, isLoading, error } = useQuery({
     queryKey: ["users", { search, role: roleFilter, page }],
@@ -39,6 +63,15 @@ export default function AdminUsers() {
     onSuccess: () => {
       queryClient.invalidateQueries(["users"]);
       setConfirmDeactivate(null);
+    },
+  });
+
+  const createMutation = useMutation({
+    mutationFn: (payload) => userAPI.create(payload),
+    onSuccess: () => {
+      queryClient.invalidateQueries(["users"]);
+      setCreateOpen(false);
+      reset();
     },
   });
 
@@ -68,9 +101,7 @@ export default function AdminUsers() {
       key: "role",
       header: "Role",
       render: (v) => (
-        <Badge
-          color={v === "admin" ? "blue" : v === "faculty" ? "yellow" : "green"}
-        >
+        <Badge color={v === "admin" ? "blue" : v === "faculty" ? "yellow" : "green"}>
           {v}
         </Badge>
       ),
@@ -139,7 +170,7 @@ export default function AdminUsers() {
             <option value="student">Student</option>
           </Select>
         </div>
-        <Button onClick={() => navigate("/register")}>
+        <Button onClick={() => setCreateOpen(true)}>
           <Plus className="h-4 w-4" /> Add User
         </Button>
       </div>
@@ -206,6 +237,97 @@ export default function AdminUsers() {
           </span>
           ? They will no longer be able to log in.
         </p>
+      </Modal>
+
+      <Modal
+        open={createOpen}
+        onClose={() => setCreateOpen(false)}
+        title="Add User"
+        size="lg"
+      >
+        <form
+          id="add-user-form"
+          className="grid grid-cols-1 gap-4 sm:grid-cols-2"
+          onSubmit={handleSubmit((d) => {
+            const { confirmPassword, ...payload } = d;
+            createMutation.mutate(payload);
+          })}
+        >
+          {createMutation.isError && (
+            <div className="sm:col-span-2">
+              <ErrorAlert
+                message={
+                  createMutation.error?.response?.data?.message ||
+                  "Failed to create user."
+                }
+              />
+            </div>
+          )}
+          <Input
+            label="First Name"
+            error={errors.firstName?.message}
+            {...register("firstName", { required: "Required" })}
+          />
+          <Input
+            label="Last Name"
+            error={errors.lastName?.message}
+            {...register("lastName", { required: "Required" })}
+          />
+          <Input
+            label="Email"
+            type="email"
+            error={errors.email?.message}
+            {...register("email", {
+              required: "Required",
+              pattern: { value: /^\S+@\S+\.\S+$/, message: "Invalid email" },
+            })}
+          />
+          <div>
+            <label className="label">Role</label>
+            <select className="input" {...register("role", { required: "Required" })}>
+              {ROLES.map((r) => (
+                <option key={r.value} value={r.value}>
+                  {r.label}
+                </option>
+              ))}
+            </select>
+          </div>
+          <Input
+            label="Password"
+            type="password"
+            error={errors.password?.message}
+            {...register("password", {
+              required: "Required",
+              minLength: { value: 8, message: "Min 8 chars" },
+              pattern: {
+                value: /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d).+$/,
+                message: "Need upper, lower & number",
+              },
+            })}
+          />
+          <Input
+            label="Confirm Password"
+            type="password"
+            error={errors.confirmPassword?.message}
+            {...register("confirmPassword", {
+              required: "Required",
+              validate: (val, vals) =>
+                val === vals.password || "Passwords do not match",
+            })}
+          />
+          <div className="col-span-2 flex justify-end gap-2">
+            <Button
+              type="button"
+              variant="secondary"
+              onClick={() => setCreateOpen(false)}
+            >
+              Cancel
+            </Button>
+            <Button type="submit" disabled={isSubmitting || createMutation.isLoading}>
+              {createMutation.isLoading ? "Creating..." : "Create User"}
+            </Button>
+          </div>
+        </form>
       </Modal>
     </div>
   );
