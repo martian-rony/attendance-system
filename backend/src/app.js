@@ -116,6 +116,7 @@ app.get('/health', (req, res) => {
     status: 'healthy',
     timestamp: new Date().toISOString(),
     uptime: process.uptime(),
+    commit: process.env.GIT_SHA || 'local-dev',
   });
 });
 
