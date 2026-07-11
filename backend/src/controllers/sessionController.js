@@ -526,12 +526,10 @@ export const getSessionAttendance = async (req, res, next) => {
 
 export const getActiveSessions = async (req, res, next) => {
   try {
-    // Compare against local end-of-day so the active list is consistent with
-    // sessionDateTime (which is computed in local time). A bare "YYYY-MM-DD"
-    // date is stored as UTC midnight, so using UTC `new Date()` would drop
-    // today's sessions in positive-offset zones like IST.
-    const localEndOfDay = new Date();
-    localEndOfDay.setHours(23, 59, 59, 999);
+    // A session is "active" by its `status` (set by the start/end lifecycle),
+    // not by calendar date — so no date filter is applied. Filtering on a
+    // `date` field stored as UTC midnight against server-local end-of-day
+    // silently dropped valid sessions in non-UTC timezones.
 
     // Students only see active sessions for courses they're enrolled in.
     let courseFilter = {};
@@ -550,7 +548,6 @@ export const getActiveSessions = async (req, res, next) => {
 
     const sessions = await Session.find({
       status: 'active',
-      date: { $lte: localEndOfDay },
       ...courseFilter,
     })
       .populate('course', 'code name')
