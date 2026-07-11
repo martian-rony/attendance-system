@@ -69,6 +69,28 @@ export const register = async (req, res, next) => {
       ...rest,
     });
 
+    // If an admin provisioned this account, email the new user their
+    // temporary password + login link so they can sign in. (Self-registration
+    // by the user themselves needs no password email — they set it.)
+    if (req.user?._id) {
+      const loginUrl = `${getClientUrl()}/login`;
+      await sendEmail({
+        to: user.email,
+        subject: 'Your Attendance System account',
+        text: `Hello ${firstName},\n\nAn account was created for you on the Attendance System.\n\nEmail: ${user.email}\nTemporary password: ${password}\n\nSign in here: ${loginUrl}\nWe recommend changing your password after logging in.\n\nIf you didn't expect this account, you can ignore this email.`,
+        html: `
+          <p>Hello ${firstName},</p>
+          <p>An account was created for you on the Attendance System.</p>
+          <ul>
+            <li>Email: <strong>${user.email}</strong></li>
+            <li>Temporary password: <strong>${password}</strong></li>
+          </ul>
+          <p><a href="${loginUrl}">Sign in here</a>. We recommend changing your password after logging in.</p>
+          <p>If you didn't expect this account, you can ignore this email.</p>
+        `,
+      });
+    }
+
     // Log audit
     await AuditLog.log({
       user: user._id,
