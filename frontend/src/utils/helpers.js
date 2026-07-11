@@ -18,7 +18,19 @@ export function formatDate(date, opts = {}) {
 
 export function formatDateTime(date) {
   if (!date) return "";
-  return new Date(date).toLocaleString("en-US", {
+  const d = new Date(date);
+  if (isNaN(d.getTime())) return "";
+  // A value whose time component is exactly UTC midnight is a calendar date
+  // stored as a UTC instant (e.g. a session/attendance `date`). Localizing it
+  // would inject a phantom time-of-day, so render it as a date only.
+  if (d.getUTCHours() === 0 && d.getUTCMinutes() === 0 && d.getUTCSeconds() === 0) {
+    return d.toLocaleDateString("en-US", {
+      year: "numeric",
+      month: "short",
+      day: "numeric",
+    });
+  }
+  return d.toLocaleString("en-US", {
     month: "short",
     day: "numeric",
     hour: "2-digit",

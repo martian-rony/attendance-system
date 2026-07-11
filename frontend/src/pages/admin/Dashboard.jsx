@@ -20,7 +20,8 @@ export default function AdminDashboard() {
   if (isLoading) return <LoadingScreen />;
   if (error) return <ErrorAlert message="Failed to load dashboard data" />;
 
-  const stats = data?.data?.data || {};
+  const stats = data?.data?.overview || {};
+  const breakdown = data?.data?.breakdown || {};
 
   return (
     <div className="space-y-6">
@@ -118,7 +119,7 @@ export default function AdminDashboard() {
             Department Breakdown
           </h3>
           <div className="space-y-2">
-            {(stats.departmentStats || []).map((d) => (
+            {(breakdown.departmentStats || []).map((d) => (
               <div
                 key={d._id}
                 className="flex items-center justify-between text-sm"

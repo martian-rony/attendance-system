@@ -15,6 +15,9 @@ export const getOverview = async (req, res, next) => {
 
     const [
       totalUsers,
+      activeUsers,
+      totalFaculty,
+      totalStudents,
       totalCourses,
       totalSessions,
       totalAttendance,
@@ -22,6 +25,9 @@ export const getOverview = async (req, res, next) => {
       attendanceTrends,
     ] = await Promise.all([
       User.countDocuments(),
+      User.countDocuments({ isActive: true }),
+      User.countDocuments({ role: 'faculty' }),
+      User.countDocuments({ role: 'student' }),
       Course.countDocuments(),
       Session.countDocuments(),
       Attendance.countDocuments(),
@@ -41,6 +47,22 @@ export const getOverview = async (req, res, next) => {
       { $sort: { count: -1 } },
     ]);
 
+    // Students per department (active enrollments -> course department)
+    const departmentStats = await Enrollment.aggregate([
+      { $match: { status: 'active' } },
+      {
+        $lookup: {
+          from: 'courses',
+          localField: 'course',
+          foreignField: '_id',
+          as: 'course',
+        },
+      },
+      { $unwind: '$course' },
+      { $group: { _id: '$course.department', count: { $sum: 1 } } },
+      { $sort: { count: -1 } },
+    ]);
+
     // Session status breakdown
     const sessionBreakdown = await Session.aggregate([
       { $group: { _id: '$status', count: { $sum: 1 } } },
@@ -56,21 +78,32 @@ export const getOverview = async (req, res, next) => {
       status: { $in: ['absent', 'late'] },
     });
 
+    // Attendance rate across all records (present + late counted as attended)
+    const attended = (attendanceBreakdown.find((a) => a._id === 'present')?.count || 0) +
+      (attendanceBreakdown.find((a) => a._id === 'late')?.count || 0);
+    const totalMarked = attendanceBreakdown.reduce((sum, a) => sum + a.count, 0);
+    const avgAttendanceRate = totalMarked > 0 ? Math.round((attended / totalMarked) * 1000) / 10 : null;
+
     res.status(200).json({
       success: true,
       data: {
         overview: {
           totalUsers,
+          activeUsers,
+          totalFaculty,
+          totalStudents,
           totalCourses,
           totalSessions,
-          totalAttendanceRecords: totalAttendance,
+          totalAttendance: totalAttendance,
           lowAttendanceCount,
+          avgAttendanceRate,
         },
         breakdown: {
           users: userBreakdown,
           courses: courseBreakdown,
           sessions: sessionBreakdown,
           attendance: attendanceBreakdown,
+          departmentStats,
         },
         recentActivity,
         attendanceTrends,
