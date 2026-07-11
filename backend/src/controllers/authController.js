@@ -2,6 +2,7 @@ import User from '../models/User.js';
 import { AppError, AuthenticationError, ValidationError } from '../utils/AppError.js';
 import { logger } from '../utils/logger.js';
 import AuditLog from '../models/AuditLog.js';
+import { sendEmail, getClientUrl } from '../utils/mailer.js';
 import {
   generateTokenPair,
   generateSecureToken,
@@ -321,12 +322,18 @@ export const forgotPassword = async (req, res, next) => {
     user.passwordResetExpires = Date.now() + 10 * 60 * 1000; // 10 minutes
     await user.save({ validateBeforeSave: false });
 
-    // TODO: Send email with reset token
-    // For now, return token in development
-    const message =
-      process.env.NODE_ENV === 'development'
-        ? `Reset token: ${resetToken}`
-        : 'If the email exists, a reset link has been sent';
+    // Send reset email (no-ops/logs if SMTP not configured)
+    const resetUrl = `${getClientUrl()}/reset-password?token=${resetToken}`;
+    await sendEmail({
+      to: user.email,
+      subject: 'Password Reset — Attendance System',
+      text: `You requested a password reset.\n\nReset your password here (valid 10 minutes):\n${resetUrl}\n\nIf you didn't request this, ignore this email.`,
+      html: `
+        <p>You requested a password reset.</p>
+        <p><a href="${resetUrl}">Reset your password</a> (link valid for 10 minutes).</p>
+        <p>If you didn't request this, you can ignore this email.</p>
+      `,
+    });
 
     // Log audit
     await AuditLog.log({
@@ -340,8 +347,7 @@ export const forgotPassword = async (req, res, next) => {
 
     res.status(200).json({
       success: true,
-      message,
-      ...(process.env.NODE_ENV === 'development' && { resetToken }),
+      message: 'If the email exists, a reset link has been sent',
     });
   } catch (error) {
     next(error);
