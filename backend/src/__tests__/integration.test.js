@@ -1,0 +1,279 @@
+// Full-stack integration test: QR / geolocation / attendance + Socket.io flow.
+// Boots the Express app + Socket.io in-process against an in-memory MongoDB.
+// Mirrors how the frontend drives attendance: admin creates a course, faculty
+// starts a session (QR issued), student scans the QR (token + GPS), backend
+// records attendance with a geofence check, and a realtime 'attendance:marked'
+// event fires to the faculty's session room.
+import request from 'supertest';
+import { io } from 'socket.io-client';
+import mongoose from 'mongoose';
+import http from 'http';
+import { MongoMemoryServer } from 'mongodb-memory-server';
+let server;
+let BASE;
+let app;
+let User;
+let mongo;
+
+const api = (token) => ({
+  get: (p) =>
+    request(BASE)
+      .get(p)
+      .set('Authorization', token ? `Bearer ${token}` : ''),
+  post: (p, body) =>
+    request(BASE)
+      .post(p)
+      .set('Authorization', token ? `Bearer ${token}` : '')
+      .send(body),
+});
+
+let pass = 0,
+  fail = 0;
+const ok = (name, cond, extra = '') => {
+  if (cond) {
+    pass++;
+    console.log(`  PASS  ${name}`);
+  } else {
+    fail++;
+    console.log(`  FAIL  ${name}  ${extra}`);
+  }
+};
+
+beforeAll(async () => {
+  mongo = await MongoMemoryServer.create();
+  process.env.MONGODB_URI = mongo.getUri();
+  // Dynamic imports AFTER env is set so app/config read correct secrets.
+  const db = await import('../config/database.js');
+  await db.connectDB();
+  app = (await import('../app.js')).default;
+  const { initializeSocket } = await import('../socket/handlers.js');
+  User = (await import('../models/User.js')).default;
+  server = http.createServer(app);
+  initializeSocket(server);
+  await new Promise((res) => server.listen(0, res));
+  BASE = `http://localhost:${server.address().port}`;
+
+  // Seed the four accounts directly (bypassing registration restrictions).
+  const mk = async (email, password, role, extra = {}) => {
+    // Set plain `password`; the model's pre('save') hook hashes it once.
+    const u = new User({
+      email,
+      password,
+      role,
+      isActive: true,
+      firstName: role[0].toUpperCase(),
+      lastName: role.slice(1),
+      ...extra,
+    });
+    await u.save();
+    return u;
+  };
+  await mk('admin@college.edu', 'Admin@1234', 'admin');
+  await mk('faculty1@college.edu', 'Faculty@123', 'faculty', { department: 'Computer Science' });
+  await mk('student1@college.edu', 'Student@123', 'student', { studentId: 'STU001' });
+  await mk('student2@college.edu', 'Student@123', 'student', { studentId: 'STU002' });
+}, 60000);
+
+afterAll(async () => {
+  if (server) await new Promise((res) => server.close(res));
+  await mongoose.disconnect();
+  if (mongo) await mongo.stop();
+});
+
+const login = async (email, password) => {
+  const r = await api().post('/api/auth/login', { email, password });
+  if (!r.body?.data?.user) throw new Error(`login failed ${email}: ${r.status}`);
+  return { user: r.body.data.user, token: r.body.data.tokens.accessToken };
+};
+
+test('full attendance flow: QR + geolocation + Socket.io', async () => {
+  const admin = await login('admin@college.edu', 'Admin@1234');
+  const faculty = await login('faculty1@college.edu', 'Faculty@123');
+  const student1 = await login('student1@college.edu', 'Student@123');
+  const student2 = await login('student2@college.edu', 'Student@123');
+  ok('all four logins succeed', admin.user && faculty.user && student1.user && student2.user);
+
+  // Admin creates a course
+  const courseRes = await api(admin.token).post('/api/courses', {
+    code: `TST${Date.now().toString().slice(-4)}`,
+    name: 'Integration Test Course',
+    department: 'Computer Science',
+    program: 'btech',
+    year: 1,
+    semester: 1,
+    credits: 3,
+    academicYear: '2024-2025',
+    faculty: faculty.user._id,
+  });
+  const courseId = courseRes.body.data?.course?._id;
+  ok('admin creates course', !!courseId, JSON.stringify(courseRes.body).slice(0, 120));
+
+  await api(admin.token).post(`/api/courses/${courseId}/enroll`, {
+    studentIds: [student1.user._id, student2.user._id],
+  });
+  ok('students enrolled', true);
+
+  // Faculty creates + starts a session with geofence
+  const now = new Date();
+  const start = new Date(now.getTime() - 2 * 60 * 1000);
+  const end = new Date(now.getTime() + 60 * 60 * 1000);
+  const SESS_LON = 77.209,
+    SESS_LAT = 28.6139;
+  const sessRes = await api(faculty.token).post('/api/sessions', {
+    courseId,
+    title: 'Live Attendance Session',
+    date: now.toISOString().slice(0, 10),
+    startTime: `${String(start.getHours()).padStart(2, '0')}:${String(start.getMinutes()).padStart(2, '0')}`,
+    endTime: `${String(end.getHours()).padStart(2, '0')}:${String(end.getMinutes()).padStart(2, '0')}`,
+    room: 'A-101',
+    location: { type: 'Point', coordinates: [SESS_LON, SESS_LAT] },
+    geofenceRadius: 100,
+    settings: { requireGeolocation: true, lateThreshold: 15, allowLateEntry: true },
+    attendanceWindow: { openBefore: 10, closeAfter: 30 },
+  });
+  const sessionId = sessRes.body.data?.session?._id;
+  ok('faculty creates session', !!sessionId, JSON.stringify(sessRes.body).slice(0, 120));
+
+  const startRes = await api(faculty.token).post(`/api/sessions/${sessionId}/start`, {});
+  ok('faculty starts session', startRes.body.success === true);
+  const qrToken = JSON.parse(startRes.body.data.qrCode.data).token;
+  ok('QR token extractable', !!qrToken);
+
+  // Faculty socket joins session room and listens for live marks
+  const socket = io(BASE, { auth: { token: faculty.token } });
+  await new Promise((res, rej) => {
+    socket.on('connect', () => {
+      socket.emit('join', `session:${sessionId}`);
+      res();
+    });
+    socket.on('connect_error', rej);
+    setTimeout(() => rej(new Error('socket connect timeout')), 8000);
+  });
+  ok('socket connected', socket.connected);
+
+  const iso = () => new Date().toISOString();
+  const insideGeo = { coordinates: [SESS_LON + 0.0001, SESS_LAT], accuracy: 10, timestamp: iso() };
+
+  // Student1 marks INSIDE geofence -> 201 + live event
+  const livePromise = new Promise((res) => socket.once('attendance:marked', res));
+  const markRes = await api(student1.token).post('/api/attendance/mark', {
+    sessionId,
+    qrToken,
+    geolocation: insideGeo,
+    deviceInfo: { userAgent: 'test' },
+  });
+  ok('student marks (inside geofence) -> 201', markRes.status === 201, `status ${markRes.status}`);
+  ok(
+    'recorded status is present',
+    markRes.body?.data?.attendance?.status === 'present',
+    `got ${markRes.body?.data?.attendance?.status}`
+  );
+
+  const evt = await Promise.race([
+    livePromise,
+    new Promise((_, rej) => setTimeout(() => rej(new Error('no live event')), 6000)),
+  ]).catch((e) => {
+    console.log('   (live event:', e.message, ')');
+    return null;
+  });
+  ok(
+    'realtime attendance:marked fired',
+    !!evt && evt.studentId === student1.user._id,
+    JSON.stringify(evt)
+  );
+
+  // Double mark -> 400
+  let doubleErr = 0;
+  try {
+    await api(student1.token).post('/api/attendance/mark', {
+      sessionId,
+      qrToken,
+      geolocation: insideGeo,
+    });
+  } catch (e) {
+    doubleErr = e.response?.status;
+  }
+  ok('double mark rejected (400)', doubleErr === 400, `status ${doubleErr}`);
+
+  // Outside geofence -> 400
+  let farErr = 0,
+    farMsg = '';
+  const farGeo = { coordinates: [SESS_LON + 0.02, SESS_LAT], accuracy: 10, timestamp: iso() };
+  try {
+    await api(student1.token).post('/api/attendance/mark', {
+      sessionId,
+      qrToken,
+      geolocation: farGeo,
+    });
+  } catch (e) {
+    farErr = e.response?.status;
+    farMsg = e.response?.body?.message;
+  }
+  ok('outside-geofence mark rejected (400)', farErr === 400, `status ${farErr} msg ${farMsg}`);
+
+  // Bad QR token -> 400
+  let badErr = 0;
+  try {
+    await api(student1.token).post('/api/attendance/mark', {
+      sessionId,
+      qrToken: 'deadbeef',
+      geolocation: insideGeo,
+    });
+  } catch (e) {
+    badErr = e.response?.status;
+  }
+  ok('bad QR token rejected (400)', badErr === 400, `status ${badErr}`);
+
+  // Student2 marks -> 2nd live event
+  const livePromise2 = new Promise((res) => socket.once('attendance:marked', res));
+  const mark2 = await api(student2.token).post('/api/attendance/mark', {
+    sessionId,
+    qrToken,
+    geolocation: insideGeo,
+  });
+  ok('student2 marks -> 201', mark2.status === 201);
+  const evt2 = await Promise.race([
+    livePromise2,
+    new Promise((_, rej) => setTimeout(() => rej(new Error('no 2nd live event')), 6000)),
+  ]).catch((e) => {
+    console.log('   (2nd live event:', e.message, ')');
+    return null;
+  });
+  ok(
+    '2nd realtime attendance:marked fired',
+    !!evt2 && evt2.studentId === student2.user._id,
+    JSON.stringify(evt2)
+  );
+
+  // Faculty sees 2 records
+  const listRes = await api(faculty.token).get(`/api/attendance/session/${sessionId}`);
+  const count = listRes.body?.data?.attendance?.length || 0;
+  ok('faculty attendance list has 2 records', count === 2, `count ${count}`);
+
+  socket.disconnect();
+}, 60000);
+
+test('auth + RBAC smoke', async () => {
+  const noAuth = await request(BASE).get('/api/courses');
+  ok('no-auth /courses -> 401', noAuth.status === 401, `status ${noAuth.status}`);
+
+  const student = await login('student1@college.edu', 'Student@123');
+  const forbidden = await request(BASE)
+    .get('/api/users')
+    .set('Authorization', `Bearer ${student.token}`);
+  ok(
+    'student GET /api/users -> 403 (RBAC)',
+    forbidden.status === 403,
+    `status ${forbidden.status}`
+  );
+
+  const bad = await request(BASE).post('/api/auth/login').send({ email: 'admin@college.edu' });
+  ok('login missing password -> 400', bad.status === 400, `status ${bad.status}`);
+}, 30000);
+
+afterAll(() => {
+  console.log(
+    `\n=== integration suite: ${fail === 0 ? 'ALL CHECKS PASSED' : fail + ' FAILED'} (${pass} passed, ${fail} failed) ===`
+  );
+  if (fail > 0 && typeof process.exit === 'function') process.exitCode = 1;
+});

@@ -1,0 +1,51 @@
+# Docker Compose for the Attendance Management System (MERN)
+# Usage:
+#   docker compose up --build
+#   -> frontend on http://localhost:8080 , backend API on :5000 (proxied by nginx)
+services:
+  mongo:
+    image: mongo:7
+    container_name: attendance-mongo
+    restart: unless-stopped
+    environment:
+      MONGO_INITDB_DATABASE: attendance-system
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongo-data:/data/db
+
+  backend:
+    build: ./backend
+    container_name: attendance-backend
+    restart: unless-stopped
+    depends_on:
+      - mongo
+    environment:
+      NODE_ENV: production
+      PORT: 5000
+      MONGODB_URI: mongodb://mongo:27017/attendance-system
+      # These MUST be provided in a .env file alongside this compose file.
+      # No insecure defaults are shipped — `docker compose up` will fail fast
+      # if they are missing, instead of booting with a guessable secret.
+      JWT_SECRET: ${JWT_SECRET}
+      JWT_REFRESH_SECRET: ${JWT_REFRESH_SECRET}
+      QR_CODE_SECRET: ${QR_CODE_SECRET}
+      JWT_EXPIRES_IN: "15m"
+      JWT_REFRESH_EXPIRES_IN: "7d"
+      QR_CODE_EXPIRY_MINUTES: "120"
+      CLIENT_URL: ${CLIENT_URL:-http://localhost:8080}
+      CORS_ORIGIN: ${CLIENT_URL:-http://localhost:8080}
+    ports:
+      - "5000:5000"
+
+  frontend:
+    build: ./frontend
+    container_name: attendance-frontend
+    restart: unless-stopped
+    depends_on:
+      - backend
+    ports:
+      - "8080:80"
+
+volumes:
+  mongo-data:

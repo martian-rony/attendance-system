@@ -1,0 +1,31 @@
+services:
+  - type: web
+    name: attendance-system
+    runtime: node
+    plan: free
+    region: oregon
+    rootDir: .
+    buildCommand: npm run build
+    startCommand: npm start
+    healthCheckPath: /health
+    envVars:
+      - key: NODE_ENV
+        value: production
+      # MongoDB Atlas connection string (M0 free tier). Set this in the
+      # Render dashboard -> Environment. Format:
+      # mongodb+srv://USER:PASS@cluster.xxxxx.mongodb.net/attendance-system?retryWrites=true&w=majority
+      - key: MONGODB_URI
+        sync: false
+      # 32+ character random strings. Generate with:
+      # node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
+      - key: JWT_SECRET
+        sync: false
+      - key: JWT_REFRESH_SECRET
+        sync: false
+      - key: QR_CODE_SECRET
+        sync: false
+      # CLIENT_URL is auto-set from RENDER_EXTERNAL_URL at runtime (see
+      # backend/src/config/env.js) so you do NOT need to set this.
+      # Set it only if you serve the SPA from a different domain.
+      - key: CLIENT_URL
+        sync: false
