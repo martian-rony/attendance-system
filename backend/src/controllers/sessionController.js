@@ -524,9 +524,26 @@ export const getActiveSessions = async (req, res, next) => {
     // today's sessions in positive-offset zones like IST.
     const localEndOfDay = new Date();
     localEndOfDay.setHours(23, 59, 59, 999);
+
+    // Students only see active sessions for courses they're enrolled in.
+    let courseFilter = {};
+    if (req.user.role === 'student') {
+      const enrollments = await Enrollment.find({
+        student: req.user._id,
+        status: 'active',
+      }).select('course');
+      const courseIds = enrollments.map((e) => e.course);
+      courseFilter = { course: { $in: courseIds } };
+    } else if (req.user.role === 'faculty') {
+      const courses = await Course.findByFaculty(req.user._id, { activeOnly: false });
+      const courseIds = courses.map((c) => c._id);
+      courseFilter = { course: { $in: courseIds } };
+    }
+
     const sessions = await Session.find({
       status: 'active',
       date: { $lte: localEndOfDay },
+      ...courseFilter,
     })
       .populate('course', 'code name')
       .populate('faculty', 'firstName lastName')

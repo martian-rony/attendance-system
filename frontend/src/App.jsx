@@ -22,6 +22,7 @@ import FacultyReports from "./pages/faculty/Reports.jsx";
 
 import StudentDashboard from "./pages/student/Dashboard.jsx";
 import StudentCourses from "./pages/student/Courses.jsx";
+import StudentBrowse from "./pages/student/Browse.jsx";
 import StudentAttendance from "./pages/student/Attendance.jsx";
 import StudentScan from "./pages/student/Scan.jsx";
 
@@ -197,6 +198,14 @@ export default function App() {
           element={
             <RoleLayout role="student" title="My Courses">
               <StudentCourses />
+            </RoleLayout>
+          }
+        />
+        <Route
+          path="/student/browse"
+          element={
+            <RoleLayout role="student" title="Browse Courses">
+              <StudentBrowse />
             </RoleLayout>
           }
         />

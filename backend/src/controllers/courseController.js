@@ -486,6 +486,117 @@ export const getMyCourses = async (req, res, next) => {
   }
 };
 
+// Student self-enrollment: browse all active courses with an `enrolled` flag.
+export const browseCourses = async (req, res, next) => {
+  try {
+    if (req.user.role !== 'student') {
+      return next(new AuthorizationError('Only students can browse courses'));
+    }
+
+    const courses = await Course.find({ isActive: true })
+      .populate('faculty', 'firstName lastName email department')
+      .sort({ code: 1 });
+
+    const enrolledIds = new Set(
+      (
+        await Enrollment.find({
+          student: req.user._id,
+          status: 'active',
+        }).select('course')
+      ).map((e) => e.course.toString())
+    );
+
+    const data = courses.map((c) => ({
+      ...c.toObject(),
+      enrolled: enrolledIds.has(c._id.toString()),
+    }));
+
+    res.status(200).json({ success: true, data: { courses: data } });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// Student joins a course themselves.
+export const enrollSelf = async (req, res, next) => {
+  try {
+    if (req.user.role !== 'student') {
+      return next(new AuthorizationError('Only students can enroll themselves'));
+    }
+
+    const course = await Course.findById(req.params.id);
+    if (!course) return next(new NotFoundError('Course'));
+    if (!course.isActive) {
+      return next(new AppError('This course is not open for enrollment', 400));
+    }
+
+    // Already enrolled?
+    const existing = await Enrollment.findOne({
+      student: req.user._id,
+      course: course._id,
+    });
+    if (existing) {
+      if (existing.status === 'active') {
+        return res.status(200).json({
+          success: true,
+          message: 'Already enrolled',
+          data: { enrollment: existing },
+        });
+      }
+      // Reactivate a dropped/waitlisted enrollment.
+      existing.status = 'active';
+      existing.droppedAt = null;
+      existing.dropReason = null;
+      await existing.save();
+      await course.addStudent(req.user._id);
+      return res
+        .status(200)
+        .json({ success: true, message: 'Re-enrolled', data: { enrollment: existing } });
+    }
+
+    const enrollment = await Enrollment.enrollStudent(
+      req.user._id,
+      course._id,
+      req.user._id
+    );
+
+    await AuditLog.log({
+      user: req.user._id,
+      action: 'STUDENT_SELF_ENROLLED',
+      resource: 'Course',
+      resourceId: course._id,
+      details: { courseCode: course.code },
+      ip: req.ip,
+      userAgent: req.get('User-Agent'),
+    });
+
+    res.status(201).json({ success: true, data: { enrollment } });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// Student leaves a course they joined.
+export const unenrollSelf = async (req, res, next) => {
+  try {
+    if (req.user.role !== 'student') {
+      return next(new AuthorizationError('Only students can unenroll themselves'));
+    }
+
+    const enrollment = await Enrollment.findOne({
+      student: req.user._id,
+      course: req.params.id,
+    });
+    if (!enrollment) return next(new NotFoundError('Enrollment'));
+
+    await enrollment.drop('Left by student', req.user._id);
+
+    res.status(200).json({ success: true, message: 'Left course' });
+  } catch (error) {
+    next(error);
+  }
+};
+
 export const getDepartments = async (req, res, next) => {
   try {
     const departments = await Course.distinct('department', { isActive: true });
