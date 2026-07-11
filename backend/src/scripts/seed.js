@@ -207,4 +207,12 @@ const main = async () => {
 
 export { seedDatabase };
 
-main();
+// Only run as a standalone script (npm run db:seed), NOT when imported by
+// server.js (which calls seedDatabase() directly). Importing must not trigger
+// a second, uncontrolled seed run.
+const isMain =
+  process.argv[1] && import.meta.url === `file://${process.argv[1]}`;
+
+if (isMain) {
+  main();
+}
