@@ -560,6 +560,13 @@ export const getActiveSessions = async (req, res, next) => {
     res.status(200).json({
       success: true,
       data: { sessions },
+      _debug: {
+        serverTZ: Intl.DateTimeFormat().resolvedOptions().timeZone,
+        now: new Date().toISOString(),
+        localEndOfDay: localEndOfDay.toISOString(),
+        courseFilter,
+        rawCount: sessions.length,
+      },
     });
   } catch (error) {
     next(error);
