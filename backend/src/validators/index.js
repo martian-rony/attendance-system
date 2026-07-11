@@ -243,6 +243,10 @@ export const createSessionSchema = z.object({
     date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Date format: YYYY-MM-DD'),
     startTime: z.string().regex(/^([01]?[0-9]|2[0-3]):[0-5][0-9]$/, 'Time format: HH:MM'),
     endTime: z.string().regex(/^([01]?[0-9]|2[0-3]):[0-5][0-9]$/, 'Time format: HH:MM'),
+    // Absolute UTC instants sent by the client from its local wall-clock.
+    // Timezone-stable window; optional for legacy clients that only send date/startTime.
+    startDateTime: z.string().datetime({ offset: true }).optional(),
+    endDateTime: z.string().datetime({ offset: true }).optional(),
     room: z.string().max(50).optional(),
     location: z
       .object({
@@ -285,6 +289,8 @@ export const updateSessionSchema = z.object({
       .string()
       .regex(/^([01]?[0-9]|2[0-3]):[0-5][0-9]$/)
       .optional(),
+    startDateTime: z.string().datetime({ offset: true }).optional(),
+    endDateTime: z.string().datetime({ offset: true }).optional(),
     room: z.string().max(50).optional(),
     location: z
       .object({

@@ -140,6 +140,10 @@ test('session created "now" is within window and markable across timezones', asy
   ok('session created', sessRes.status === 201, `status=${sessRes.status} ${JSON.stringify(sessRes.body).slice(0, 150)}`);
   const sessionId = sessRes.body.data?.session?._id;
   ok('session id present', !!sessionId);
+  // Guard against the validator silently stripping startDateTime (the real
+  // cause of "Attendance window is closed"): it MUST be persisted.
+  const persisted = await (await import('../models/Session.js')).default.findById(sessionId).lean();
+  ok('startDateTime persisted (not stripped by validator)', !!persisted?.startDateTime, `startDateTime=${persisted?.startDateTime}`);
 
   const started = await api(faculty.token).post(`/api/sessions/${sessionId}/start`).send({});
   ok('session started', started.status === 200, `status=${started.status}`);
