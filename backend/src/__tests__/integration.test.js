@@ -117,12 +117,16 @@ test('full attendance flow: QR + geolocation + Socket.io', async () => {
   const now = new Date();
   const start = new Date(now.getTime() - 2 * 60 * 1000);
   const end = new Date(now.getTime() + 60 * 60 * 1000);
+  // Local Y-M-D (NOT now.toISOString().slice(0,10) which is UTC and can land on
+  // the wrong calendar day, breaking the attendance window). The backend window
+  // math reads local calendar parts, so the date must be local too.
+  const localYMD = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
   const SESS_LON = 77.209,
     SESS_LAT = 28.6139;
   const sessRes = await api(faculty.token).post('/api/sessions', {
     courseId,
     title: 'Live Attendance Session',
-    date: now.toISOString().slice(0, 10),
+    date: localYMD,
     startTime: `${String(start.getHours()).padStart(2, '0')}:${String(start.getMinutes()).padStart(2, '0')}`,
     endTime: `${String(end.getHours()).padStart(2, '0')}:${String(end.getMinutes()).padStart(2, '0')}`,
     room: 'A-101',

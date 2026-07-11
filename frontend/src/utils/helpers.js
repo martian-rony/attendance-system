@@ -28,7 +28,11 @@ export function formatDateTime(date) {
 
 export function formatTime(time) {
   if (!time) return "";
-  return time;
+  // `expiresAt` arrives as a Date/ISO string (UTC) — render it in the user's
+  // local time. A plain "HH:MM" string (e.g. session.endTime) is returned as-is.
+  const d = new Date(time);
+  if (isNaN(d.getTime())) return time;
+  return d.toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit" });
 }
 
 export function getInitials(firstName = "", lastName = "") {

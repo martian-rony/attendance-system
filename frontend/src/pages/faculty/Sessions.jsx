@@ -17,6 +17,32 @@ import { useAuth } from "../../contexts/AuthContext.jsx";
 import { useForm } from "react-hook-form";
 import { formatDateTime } from "../../utils/helpers.js";
 
+// Build local-date / local-time strings from the CURRENT clock so a session
+// created via this form opens its attendance window immediately. (Previously
+// the form used `new Date().toISOString().slice(0,10)`, which is UTC and can
+// land on the wrong calendar day in non-UTC timezones — that made freshly
+// created sessions appear "already closed" because the window was in the past.)
+const pad = (n) => String(n).padStart(2, "0");
+const localDateValue = (d) => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+const localTimeValue = (d) => `${pad(d.getHours())}:${pad(d.getMinutes())}`;
+const sessionDefaults = () => {
+  const now = new Date();
+  return {
+    courseId: "",
+    title: "",
+    date: localDateValue(now),
+    startTime: localTimeValue(now),
+    endTime: localTimeValue(new Date(now.getTime() + 60 * 60 * 1000)),
+    room: "",
+    building: "",
+    latitude: "",
+    longitude: "",
+    geofenceRadius: 100,
+    allowLate: true,
+    lateThreshold: 10,
+  };
+};
+
 export default function FacultySessions() {
   const { user } = useAuth();
   const navigate = useNavigate();
@@ -33,20 +59,7 @@ export default function FacultySessions() {
   });
 
   const { register, handleSubmit, reset, setValue, watch } = useForm({
-    defaultValues: {
-      courseId: "",
-      title: "",
-      date: new Date().toISOString().slice(0, 10),
-      startTime: "09:00",
-      endTime: "10:00",
-      room: "",
-      building: "",
-      latitude: "",
-      longitude: "",
-      geofenceRadius: 100,
-      allowLate: true,
-      lateThreshold: 10,
-    },
+    defaultValues: sessionDefaults(),
   });
 
   const [locating, setLocating] = useState(false);
@@ -134,7 +147,12 @@ export default function FacultySessions() {
   return (
     <div className="space-y-4">
       <div className="flex justify-end">
-        <Button onClick={() => setCreateOpen(true)}>
+        <Button
+          onClick={() => {
+            reset(sessionDefaults());
+            setCreateOpen(true);
+          }}
+        >
           <Plus className="h-4 w-4" /> New Session
         </Button>
       </div>

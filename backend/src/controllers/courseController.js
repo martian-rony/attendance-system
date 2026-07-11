@@ -67,7 +67,14 @@ export const getCourses = async (req, res, next) => {
     if (req.user.role === 'faculty') {
       query.faculty = req.user._id;
     } else if (req.user.role === 'student') {
-      query.students = req.user._id;
+      // Membership is sourced from the Enrollment collection (the source of
+      // truth), NOT the denormalized Course.students array — that array can
+      // drift out of sync if it is ever wiped or only partially updated, which
+      // would make a genuinely-enrolled student vanish from their course list.
+      const enrolledIds = (
+        await Enrollment.find({ student: req.user._id, status: 'active' }).select('course')
+      ).map((e) => e.course);
+      query._id = { $in: enrolledIds };
       query.isActive = true;
     }
 
@@ -141,11 +148,17 @@ export const getCourse = async (req, res, next) => {
       return next(new AuthorizationError('You can only access your own courses'));
     }
 
-    if (
-      req.user.role === 'student' &&
-      !course.students.some((s) => s._id.toString() === req.user._id.toString())
-    ) {
-      return next(new AuthorizationError('You are not enrolled in this course'));
+    if (req.user.role === 'student') {
+      // Authorization is checked against Enrollment (source of truth), not the
+      // denormalized Course.students array which may be stale.
+      const enrollment = await Enrollment.findOne({
+        student: req.user._id,
+        course: course._id,
+        status: 'active',
+      });
+      if (!enrollment) {
+        return next(new AuthorizationError('You are not enrolled in this course'));
+      }
     }
 
     // Get enrollment stats
@@ -472,7 +485,14 @@ export const getMyCourses = async (req, res, next) => {
     if (req.user.role === 'faculty') {
       courses = await Course.findByFaculty(req.user._id, { activeOnly: true });
     } else if (req.user.role === 'student') {
-      courses = await Course.findByStudent(req.user._id);
+      // Source of truth is the Enrollment collection, NOT the denormalized
+      // Course.students array (which can drift if ever wiped/stale). Derive
+      // the course list from active enrollments so a real enrollment is always
+      // visible regardless of the array's state.
+      const enrollments = await Enrollment.getStudentEnrollments(req.user._id, {
+        activeOnly: true,
+      });
+      courses = enrollments.map((e) => e.course).filter(Boolean);
     } else {
       return next(new AuthorizationError('Invalid role'));
     }
