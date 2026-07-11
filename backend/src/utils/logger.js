@@ -53,6 +53,15 @@ if (process.env.NODE_ENV !== 'production') {
       format: consoleFormat,
     })
   );
+} else {
+  // In production (e.g. Render) there are no log files accessible to the host,
+  // so also emit to stdout/stderr — otherwise crashes are invisible.
+  logger.add(
+    new winston.transports.Console({
+      format: consoleFormat,
+      stderrLevels: ['error'],
+    })
+  );
 }
 
 export { logger };
