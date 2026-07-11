@@ -16,8 +16,10 @@ import {
   Avatar,
 } from "../../components/ui/index.jsx";
 import { useAuth } from "../../contexts/AuthContext.jsx";
+import { useRealtimeInvalidation } from "../../hooks/useRealtimeInvalidation.js";
 
 export default function AdminUsers() {
+  useRealtimeInvalidation();
   const { user: currentUser } = useAuth();
   const navigate = useNavigate();
   const queryClient = useQueryClient();

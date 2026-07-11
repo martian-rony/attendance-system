@@ -103,6 +103,9 @@ export const createUser = async (req, res, next) => {
 
     user.passwordHash = undefined;
 
+    // Notify admins so their user list refreshes without a manual reload.
+    req.io?.to('role:admin').emit('user:created', { userId: user._id });
+
     res.status(201).json({
       success: true,
       data: { user },

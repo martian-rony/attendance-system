@@ -33,6 +33,11 @@ export const createCourse = async (req, res, next) => {
 
     logger.info(`Course created: ${course.code} by ${req.user.email}`);
 
+    // Notify admins so their course list refreshes without a manual reload.
+    req.io?.to('role:admin').emit('course:created', {
+      courseId: course._id,
+    });
+
     res.status(201).json({
       success: true,
       data: { course },

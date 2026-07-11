@@ -81,6 +81,12 @@ export const createSession = async (req, res, next) => {
 
     logger.info(`Session created: ${session.title} for ${course.code}`);
 
+    // Notify admins so their session list refreshes without a manual reload.
+    req.io?.to('role:admin').emit('session:created', {
+      sessionId: session._id,
+      courseId: session.course,
+    });
+
     res.status(201).json({
       success: true,
       data: { session },

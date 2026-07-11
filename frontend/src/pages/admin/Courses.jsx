@@ -16,8 +16,10 @@ import {
   Textarea,
 } from "../../components/ui/index.jsx";
 import { useForm } from "react-hook-form";
+import { useRealtimeInvalidation } from "../../hooks/useRealtimeInvalidation.js";
 
 export default function AdminCourses() {
+  useRealtimeInvalidation();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const [createOpen, setCreateOpen] = useState(false);

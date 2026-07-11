@@ -104,6 +104,16 @@ export const register = async (req, res, next) => {
 
     logger.info(`New user registered: ${email} (${role})`);
 
+    // When an admin is provisioning another account, do NOT issue tokens or
+    // set cookies — that would clobber the admin's session and log them in as
+    // the newly created user. Genuine self-signup (no authenticated caller)
+    // still gets logged in via sendTokens.
+    if (req.user?._id) {
+      user.passwordHash = undefined;
+      user.refreshToken = undefined;
+      return res.status(201).json({ success: true, data: { user } });
+    }
+
     sendTokens(user, 201, res);
   } catch (error) {
     next(error);

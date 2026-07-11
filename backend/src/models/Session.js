@@ -204,7 +204,12 @@ sessionSchema.virtual('windowCloseTime').get(function () {
   const closeAfter = this.attendanceWindow?.closeAfter ?? 30;
   const dt = this.sessionDateTime;
   dt.setMinutes(dt.getMinutes() + closeAfter);
-  return dt;
+  // Never close the window before the class actually ends — for any session
+  // longer than `closeAfter` minutes, stay open through the whole period so a
+  // student inside the geofence and inside the scheduled time can still mark.
+  // If `closeAfter` is larger than the session length, that later time wins.
+  const end = this.sessionEndDateTime;
+  return end.getTime() > dt.getTime() ? end : dt;
 });
 
 // Virtual for is within attendance window
