@@ -13,6 +13,11 @@ services:
     envVars:
       - key: NODE_ENV
         value: production
+      # Install devDependencies (vite etc.) during build even though
+      # NODE_ENV=production. Without this, `npm install` skips devDeps and
+      # `vite build` fails with "vite: not found".
+      - key: NPM_CONFIG_PRODUCTION
+        value: false
       - key: MONGODB_URI
         sync: false
       - key: JWT_SECRET
