@@ -86,8 +86,8 @@ const seedCourses = async (faculty, students) => {
         { day: 'monday', startTime: '09:00', endTime: '10:30', room: 'LAB-A' },
         { day: 'wednesday', startTime: '09:00', endTime: '10:30', room: 'LAB-A' },
       ],
-      location: { type: 'Point', coordinates: [SEED_GEOFENCE.lon, SEED_GEOFENCE.lat] },
-      geofenceRadius: SEED_GEOFENCE.radius,
+      location: { type: 'Point', coordinates: [77.5946, 12.9716] },
+      geofenceRadius: 500,
       settings: { requireGeolocation: true },
     },
     {
@@ -103,8 +103,8 @@ const seedCourses = async (faculty, students) => {
         { day: 'tuesday', startTime: '11:00', endTime: '12:30', room: 'LAB-B' },
         { day: 'thursday', startTime: '11:00', endTime: '12:30', room: 'LAB-B' },
       ],
-      location: { type: 'Point', coordinates: [SEED_GEOFENCE.lon, SEED_GEOFENCE.lat] },
-      geofenceRadius: SEED_GEOFENCE.radius,
+      location: { type: 'Point', coordinates: [77.5946, 12.9716] },
+      geofenceRadius: 500,
       settings: { requireGeolocation: true },
     },
     {
@@ -117,8 +117,8 @@ const seedCourses = async (faculty, students) => {
       academicYear: '2024-2025',
       faculty: mathFaculty._id,
       schedule: [{ day: 'monday', startTime: '14:00', endTime: '15:30', room: 'ROOM-101' }],
-      location: { type: 'Point', coordinates: [SEED_GEOFENCE.lon, SEED_GEOFENCE.lat] },
-      geofenceRadius: SEED_GEOFENCE.radius,
+      location: { type: 'Point', coordinates: [77.5946, 12.9716] },
+      geofenceRadius: 500,
       settings: { requireGeolocation: true },
     },
   ];
@@ -175,25 +175,12 @@ const seedSessions = async (courses) => {
   logger.info(`Seeded ${sessions.length} sessions`);
 };
 
-// Geofence location/radius for seeded demo data. Override with env vars so
-// the "classroom" sits at your real position (phone scans then pass).
-// Defaults to Bangalore with a 100m radius if not provided.
-const SEED_GEOFENCE = {
-  lat: parseFloat(process.env.SEED_GEOFENCE_LAT) || 12.9716,
-  lon: parseFloat(process.env.SEED_GEOFENCE_LON) || 77.5946,
-  radius: parseInt(process.env.SEED_GEOFENCE_RADIUS, 10) || 100,
-};
-
 const seedDatabase = async () => {
   logger.info('Clearing existing data...');
   await User.deleteMany({});
   await Course.deleteMany({});
   await Session.deleteMany({});
   await Enrollment.deleteMany({});
-
-  logger.info(
-    `Seeding demo geofence at lat ${SEED_GEOFENCE.lat}, lon ${SEED_GEOFENCE.lon}, radius ${SEED_GEOFENCE.radius}m`
-  );
 
   const users = await seedUsers();
   const faculty = users.filter((u) => u.role === 'faculty');
