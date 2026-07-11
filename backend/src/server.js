@@ -3,6 +3,8 @@ import app from './app.js';
 import { connectDB } from './config/database.js';
 import { logger } from './utils/logger.js';
 import { initializeSocket } from './socket/handlers.js';
+import { seedDatabase } from './scripts/seed.js';
+import User from './models/User.js';
 import http from 'http';
 
 const PORT = process.env.PORT || 5000;
@@ -12,10 +14,28 @@ const server = http.createServer(app);
 // Initialize Socket.io
 initializeSocket(server);
 
+// Seed demo data on first boot when the DB is empty (single-service deploy
+// with no manual seed step). Skipped in development to avoid clobbering local
+// data, and only runs when there are zero users so it's idempotent.
+const maybeSeed = async () => {
+  if (process.env.NODE_ENV === 'development') return;
+  try {
+    const count = await User.estimatedDocumentCount();
+    if (count === 0) {
+      logger.info('No users found — seeding demo data...');
+      await seedDatabase();
+    }
+  } catch (err) {
+    logger.error('Auto-seed skipped (will retry next boot):', err.message);
+  }
+};
+
 const startServer = async () => {
   try {
     // Connect to MongoDB
     await connectDB();
+
+    await maybeSeed();
 
     server.listen(PORT, () => {
       logger.info(
@@ -25,6 +45,11 @@ const startServer = async () => {
       logger.info(`Health check at http://localhost:${PORT}/health`);
     });
   } catch (error) {
+    // Use console.error directly so the failure is always visible on the
+    // host (Render captures stderr) even if the logger transport doesn't flush
+    // before process.exit.
+    // eslint-disable-next-line no-console
+    console.error('Failed to start server:', error);
     logger.error('Failed to start server:', error);
     process.exit(1);
   }

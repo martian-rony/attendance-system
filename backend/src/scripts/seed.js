@@ -172,29 +172,31 @@ const seedSessions = async (courses) => {
   logger.info(`Seeded ${sessions.length} sessions`);
 };
 
+const seedDatabase = async () => {
+  logger.info('Clearing existing data...');
+  await User.deleteMany({});
+  await Course.deleteMany({});
+  await Session.deleteMany({});
+  await Enrollment.deleteMany({});
+
+  const users = await seedUsers();
+  const faculty = users.filter((u) => u.role === 'faculty');
+  const students = users.filter((u) => u.role === 'student');
+
+  const courses = await seedCourses(faculty, students);
+  await seedSessions(courses);
+
+  logger.info('Seed completed successfully!');
+  logger.info('Default accounts:');
+  logger.info('  Admin:     admin@college.edu / Admin@1234');
+  logger.info('  Faculty:   faculty1@college.edu / Faculty@123');
+  logger.info('  Student:   student1@college.edu / Student@123');
+};
+
 const main = async () => {
   try {
     await connectDB();
-
-    logger.info('Clearing existing data...');
-    await User.deleteMany({});
-    await Course.deleteMany({});
-    await Session.deleteMany({});
-    await Enrollment.deleteMany({});
-
-    const users = await seedUsers();
-    const faculty = users.filter((u) => u.role === 'faculty');
-    const students = users.filter((u) => u.role === 'student');
-
-    const courses = await seedCourses(faculty, students);
-    await seedSessions(courses);
-
-    logger.info('Seed completed successfully!');
-    logger.info('Default accounts:');
-    logger.info('  Admin:     admin@college.edu / Admin@1234');
-    logger.info('  Faculty:   faculty1@college.edu / Faculty@123');
-    logger.info('  Student:   student1@college.edu / Student@123');
-
+    await seedDatabase();
     await mongoose.connection.close();
     process.exit(0);
   } catch (error) {
@@ -202,5 +204,7 @@ const main = async () => {
     process.exit(1);
   }
 };
+
+export { seedDatabase };
 
 main();
