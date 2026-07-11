@@ -10,8 +10,10 @@ import {
   EmptyState,
 } from "../../components/ui/index.jsx";
 import { formatDateTime } from "../../utils/helpers.js";
+import { useRealtimeInvalidation } from "../../hooks/useRealtimeInvalidation.js";
 
 export default function AdminSessions() {
+  useRealtimeInvalidation();
   const { data, isLoading, error } = useQuery({
     queryKey: ["admin-sessions"],
     queryFn: () => sessionAPI.getAll({ limit: 50 }),

@@ -55,10 +55,10 @@ beforeAll(async () => {
 
   // Seed the four accounts directly (bypassing registration restrictions).
   const mk = async (email, password, role, extra = {}) => {
-    // Set plain `password`; the model's pre('save') hook hashes it once.
+    // Set plain `passwordHash`; the model's pre('save') hook hashes it once.
     const u = new User({
       email,
-      password,
+      passwordHash: password,
       role,
       isActive: true,
       firstName: role[0].toUpperCase(),
@@ -183,46 +183,33 @@ test('full attendance flow: QR + geolocation + Socket.io', async () => {
   );
 
   // Double mark -> 400
-  let doubleErr = 0;
-  try {
-    await api(student1.token).post('/api/attendance/mark', {
-      sessionId,
-      qrToken,
-      geolocation: insideGeo,
-    });
-  } catch (e) {
-    doubleErr = e.response?.status;
-  }
-  ok('double mark rejected (400)', doubleErr === 400, `status ${doubleErr}`);
+  const doubleRes = await api(student1.token).post('/api/attendance/mark', {
+    sessionId,
+    qrToken,
+    geolocation: insideGeo,
+  });
+  ok('double mark rejected (400)', doubleRes.status === 400, `status ${doubleRes.status}`);
 
   // Outside geofence -> 400
-  let farErr = 0,
-    farMsg = '';
   const farGeo = { coordinates: [SESS_LON + 0.02, SESS_LAT], accuracy: 10, timestamp: iso() };
-  try {
-    await api(student1.token).post('/api/attendance/mark', {
-      sessionId,
-      qrToken,
-      geolocation: farGeo,
-    });
-  } catch (e) {
-    farErr = e.response?.status;
-    farMsg = e.response?.body?.message;
-  }
-  ok('outside-geofence mark rejected (400)', farErr === 400, `status ${farErr} msg ${farMsg}`);
+  const farRes = await api(student1.token).post('/api/attendance/mark', {
+    sessionId,
+    qrToken,
+    geolocation: farGeo,
+  });
+  ok(
+    'outside-geofence mark rejected (400)',
+    farRes.status === 400,
+    `status ${farRes.status} msg ${farRes.body?.message}`
+  );
 
   // Bad QR token -> 400
-  let badErr = 0;
-  try {
-    await api(student1.token).post('/api/attendance/mark', {
-      sessionId,
-      qrToken: 'deadbeef',
-      geolocation: insideGeo,
-    });
-  } catch (e) {
-    badErr = e.response?.status;
-  }
-  ok('bad QR token rejected (400)', badErr === 400, `status ${badErr}`);
+  const badRes = await api(student1.token).post('/api/attendance/mark', {
+    sessionId,
+    qrToken: 'deadbeef',
+    geolocation: insideGeo,
+  });
+  ok('bad QR token rejected (400)', badRes.status === 400, `status ${badRes.status}`);
 
   // Student2 marks -> 2nd live event
   const livePromise2 = new Promise((res) => socket.once('attendance:marked', res));
@@ -269,6 +256,89 @@ test('auth + RBAC smoke', async () => {
 
   const bad = await request(BASE).post('/api/auth/login').send({ email: 'admin@college.edu' });
   ok('login missing password -> 400', bad.status === 400, `status ${bad.status}`);
+}, 30000);
+
+test('admin provisions user without losing their own session', async () => {
+  // Regression: POST /auth/register by an authenticated admin must NOT clobber
+  // the admin's cookies/tokens (the old bug logged the admin out as the new user).
+  const admin = await login('admin@college.edu', 'Admin@1234');
+
+  // Capture the admin's cookie jar by using an agent, then provision a user.
+  const agent = request.agent(BASE);
+  await agent
+    .post('/api/auth/login')
+    .set('Authorization', `Bearer ${admin.token}`)
+    .send({ email: 'admin@college.edu', password: 'Admin@1234' });
+
+  const email = `prov+${Date.now()}@college.edu`;
+  const res = await agent
+    .post('/api/auth/register')
+    .set('Authorization', `Bearer ${admin.token}`)
+    .send({ email, password: 'Student@123', firstName: 'Pro', lastName: 'Vision', role: 'student' });
+
+  ok('admin provision returns 201', res.status === 201, `status ${res.status}`);
+  ok('created user has the requested role', res.body?.data?.user?.role === 'student');
+  // The provisioning response must NOT hand back a fresh token pair (which is
+  // what would overwrite the admin's session in the browser).
+  ok('no token pair issued to admin on provision', !res.body?.data?.tokens, JSON.stringify(Object.keys(res.body?.data || {})));
+
+  // Admin session still works: same admin can still read users (admin-only).
+  const check = await agent.get('/api/users').set('Authorization', `Bearer ${admin.token}`);
+  ok('admin still authorized after provisioning', check.status === 200, `status ${check.status}`);
+}, 30000);
+
+test('admin receives session:created via socket on session creation', async () => {
+  // Regression for the "manual refresh" fix: when faculty creates a session,
+  // the backend must emit `session:created` to the `role:admin` room so the
+  // admin view refreshes without a manual reload.
+  const admin = await login('admin@college.edu', 'Admin@1234');
+  const faculty = await login('faculty1@college.edu', 'Faculty@123');
+
+  // Admin subscribes to the role:admin room.
+  const adminSocket = io(BASE, { auth: { token: admin.token } });
+  const evtPromise = new Promise((res, rej) => {
+    adminSocket.on('session:created', res);
+    setTimeout(() => rej(new Error('no session:created event')), 6000);
+  });
+  await new Promise((res) => adminSocket.on('connect', res));
+
+  // Need a course the faculty owns. Recreate the one from the full flow.
+  const now = new Date();
+  const localDate = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+  const courseRes = await api(admin.token).post('/api/courses', {
+    code: `RTL${Date.now().toString().slice(-4)}`,
+    name: 'Realtime Test Course',
+    department: 'Computer Science',
+    program: 'btech',
+    year: 1,
+    semester: 1,
+    credits: 3,
+    academicYear: '2024-2025',
+    faculty: faculty.user._id,
+  });
+  const courseId = courseRes.body.data?.course?._id;
+  ok('realtime test course created', !!courseId, JSON.stringify(courseRes.body).slice(0, 100));
+
+  const start = new Date(now.getTime() - 1 * 60 * 1000);
+  const end = new Date(now.getTime() + 60 * 60 * 1000);
+  const hhmm = (d) => `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
+  const sessRes = await api(faculty.token).post('/api/sessions', {
+    courseId,
+    title: 'Realtime Session',
+    date: localDate,
+    startTime: hhmm(start),
+    endTime: hhmm(end),
+    room: 'A-101',
+    location: { type: 'Point', coordinates: [77.209, 28.6139] },
+    geofenceRadius: 100,
+    settings: { requireGeolocation: true, lateThreshold: 15, allowLateEntry: true },
+    attendanceWindow: { openBefore: 10, closeAfter: 30 },
+  });
+  ok('faculty creates session for realtime test', sessRes.status === 201, `status ${sessRes.status}`);
+
+  const evt = await evtPromise.catch((e) => ({ error: e.message }));
+  ok('admin received session:created event', !!evt?.sessionId, JSON.stringify(evt));
+  adminSocket.disconnect();
 }, 30000);
 
 afterAll(() => {
