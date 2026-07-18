@@ -26,10 +26,10 @@ export default function AdminDashboard() {
   return (
     <div className="space-y-6">
       <div>
-        <h2 className="text-xl font-bold text-gray-900">
+        <h2 className="text-xl font-bold text-foreground">
           Welcome back, {user?.firstName}
         </h2>
-        <p className="text-sm text-gray-500">
+        <p className="text-sm text-muted-foreground">
           System overview and quick stats.
         </p>
       </div>
@@ -77,10 +77,10 @@ export default function AdminDashboard() {
         />
         <Card className="flex items-center justify-between p-5">
           <div>
-            <p className="text-sm font-medium text-gray-500">
+            <p className="text-sm font-medium text-muted-foreground">
               Avg Attendance Rate
             </p>
-            <p className="mt-2 text-3xl font-bold text-gray-900">
+            <p className="mt-2 text-3xl font-bold text-foreground">
               {stats.avgAttendanceRate
                 ? `${stats.avgAttendanceRate.toFixed(1)}%`
                 : "—"}
@@ -91,23 +91,23 @@ export default function AdminDashboard() {
 
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
         <Card className="p-5">
-          <h3 className="mb-3 font-semibold text-gray-900">Quick Actions</h3>
+          <h3 className="mb-3 font-semibold text-foreground">Quick Actions</h3>
           <div className="space-y-2">
             <Link
               to="/admin/users"
-              className="block rounded-xl border border-gray-200 px-4 py-3 text-sm font-medium text-gray-700 hover:bg-gray-50"
+              className="block rounded-xl border border-border px-4 py-3 text-sm font-medium text-foreground hover:bg-muted/40"
             >
               Manage Users →
             </Link>
             <Link
               to="/admin/courses"
-              className="block rounded-xl border border-gray-200 px-4 py-3 text-sm font-medium text-gray-700 hover:bg-gray-50"
+              className="block rounded-xl border border-border px-4 py-3 text-sm font-medium text-foreground hover:bg-muted/40"
             >
               Manage Courses →
             </Link>
             <Link
               to="/admin/reports"
-              className="block rounded-xl border border-gray-200 px-4 py-3 text-sm font-medium text-gray-700 hover:bg-gray-50"
+              className="block rounded-xl border border-border px-4 py-3 text-sm font-medium text-foreground hover:bg-muted/40"
             >
               View Reports →
             </Link>
@@ -115,7 +115,7 @@ export default function AdminDashboard() {
         </Card>
 
         <Card className="p-5">
-          <h3 className="mb-3 font-semibold text-gray-900">
+          <h3 className="mb-3 font-semibold text-foreground">
             Department Breakdown
           </h3>
           <div className="space-y-2">
@@ -124,14 +124,14 @@ export default function AdminDashboard() {
                 key={d._id}
                 className="flex items-center justify-between text-sm"
               >
-                <span className="text-gray-600">{d._id}</span>
-                <span className="font-medium text-gray-900">
+                <span className="text-muted-foreground">{d._id}</span>
+                <span className="font-medium text-foreground">
                   {d.count} students
                 </span>
               </div>
             ))}
             {(!stats.departmentStats || stats.departmentStats.length === 0) && (
-              <p className="text-sm text-gray-400">No data available</p>
+              <p className="text-sm text-muted-foreground/70">No data available</p>
             )}
           </div>
         </Card>

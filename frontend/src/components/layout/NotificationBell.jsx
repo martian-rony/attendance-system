@@ -1,9 +1,11 @@
 import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useQuery, useQueryClient, useMutation } from "@tanstack/react-query";
+import { Bell, CheckCheck } from "lucide-react";
 import { notificationAPI } from "../../api/index.js";
 import { useSocket } from "../../contexts/SocketContext.jsx";
 import { cn } from "../../utils/helpers.js";
+import { Button } from "../ui/button.jsx";
 
 function timeAgo(date) {
   const d = new Date(date);
@@ -34,7 +36,6 @@ export function NotificationBell() {
   const notifications = data?.notifications || [];
   const unreadCount = data?.unreadCount || 0;
 
-  // Live push: prepend new notifications and bump the unread count.
   useEffect(() => {
     const off = on("notification:new", () => {
       queryClient.invalidateQueries({ queryKey: ["notifications"] });
@@ -42,7 +43,6 @@ export function NotificationBell() {
     return off;
   }, [on, queryClient]);
 
-  // Close on outside click.
   useEffect(() => {
     function handler(e) {
       if (panelRef.current && !panelRef.current.contains(e.target)) {
@@ -73,49 +73,38 @@ export function NotificationBell() {
 
   return (
     <div className="relative" ref={panelRef}>
-      <button
+      <Button
+        variant="ghost"
+        size="icon"
         onClick={() => setOpen((v) => !v)}
-        className="relative rounded-lg p-2 text-gray-500 hover:bg-gray-100"
         aria-label="Notifications"
+        className="relative"
       >
-        <svg
-          className="h-5 w-5"
-          fill="none"
-          viewBox="0 0 24 24"
-          stroke="currentColor"
-          strokeWidth={1.8}
-        >
-          <path
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"
-          />
-        </svg>
+        <Bell className="h-5 w-5" />
         {unreadCount > 0 && (
-          <span className="absolute -right-0.5 -top-0.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-red-500 px-1 text-[10px] font-semibold text-white">
+          <span className="absolute -right-0.5 -top-0.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-destructive px-1 text-[10px] font-semibold text-destructive-foreground">
             {unreadCount > 99 ? "99+" : unreadCount}
           </span>
         )}
-      </button>
+      </Button>
 
       {open && (
-        <div className="absolute right-0 z-50 mt-2 w-80 overflow-hidden rounded-xl border border-gray-200 bg-white shadow-lg">
-          <div className="flex items-center justify-between border-b border-gray-100 px-4 py-3">
-            <span className="text-sm font-semibold text-gray-900">
-              Notifications
-            </span>
+        <div className="absolute right-0 z-50 mt-2 w-80 overflow-hidden rounded-lg border bg-popover text-popover-foreground shadow-md">
+          <div className="flex items-center justify-between border-b px-4 py-3">
+            <span className="text-sm font-semibold">Notifications</span>
             {unreadCount > 0 && (
               <button
                 onClick={() => markAllRead.mutate()}
-                className="text-xs font-medium text-brand-600 hover:text-brand-700"
+                className="flex items-center gap-1 text-xs font-medium text-primary hover:text-primary/80"
               >
+                <CheckCheck className="h-3.5 w-3.5" />
                 Mark all read
               </button>
             )}
           </div>
           <div className="max-h-96 overflow-y-auto">
             {notifications.length === 0 ? (
-              <div className="px-4 py-8 text-center text-sm text-gray-400">
+              <div className="px-4 py-8 text-center text-sm text-muted-foreground">
                 No notifications yet
               </div>
             ) : (
@@ -124,22 +113,20 @@ export function NotificationBell() {
                   key={n._id}
                   onClick={() => handleClick(n)}
                   className={cn(
-                    "flex w-full flex-col items-start gap-0.5 border-b border-gray-50 px-4 py-3 text-left transition-colors hover:bg-gray-50",
-                    !n.read && "bg-brand-50/50",
+                    "flex w-full flex-col items-start gap-0.5 border-b border-border/60 px-4 py-3 text-left transition-colors hover:bg-accent/50",
+                    !n.read && "bg-accent/30",
                   )}
                 >
                   <div className="flex w-full items-start justify-between gap-2">
-                    <span className="text-sm font-medium text-gray-900">
-                      {n.title}
-                    </span>
+                    <span className="text-sm font-medium">{n.title}</span>
                     {!n.read && (
-                      <span className="mt-1 h-2 w-2 shrink-0 rounded-full bg-brand-500" />
+                      <span className="mt-1 h-2 w-2 shrink-0 rounded-full bg-primary" />
                     )}
                   </div>
                   {n.body && (
-                    <span className="text-xs text-gray-600">{n.body}</span>
+                    <span className="text-xs text-muted-foreground">{n.body}</span>
                   )}
-                  <span className="text-[11px] text-gray-400">
+                  <span className="text-[11px] text-muted-foreground/70">
                     {timeAgo(n.createdAt)}
                   </span>
                 </button>

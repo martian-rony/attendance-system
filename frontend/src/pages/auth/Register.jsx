@@ -2,12 +2,15 @@ import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { useNavigate, Link } from "react-router-dom";
 import { useAuth } from "../../contexts/AuthContext.jsx";
+import { Button, Input, ErrorAlert, SuccessAlert, Card } from "../../components/ui/index.jsx";
+import { Label } from "../../components/ui/label.jsx";
 import {
-  Button,
-  Input,
-  ErrorAlert,
-  SuccessAlert,
-} from "../../components/ui/index.jsx";
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "../../components/ui/select.jsx";
 import { authAPI } from "../../api/index.js";
 
 const ROLES = [
@@ -25,6 +28,7 @@ export default function Register() {
     register,
     handleSubmit,
     watch,
+    setValue,
     formState: { errors, isSubmitting },
   } = useForm({
     defaultValues: {
@@ -56,16 +60,16 @@ export default function Register() {
   if (!user || user.role !== "admin") {
     return (
       <div className="flex min-h-full items-center justify-center p-6">
-        <div className="card max-w-md p-8 text-center">
-          <h2 className="text-lg font-semibold text-gray-900">Access Denied</h2>
-          <p className="mt-2 text-sm text-gray-500">
+        <Card className="max-w-md p-8 text-center">
+          <h2 className="text-lg font-semibold">Access Denied</h2>
+          <p className="mt-2 text-sm text-muted-foreground">
             Only administrators can register new users. Please{" "}
-            <Link to="/login" className="text-brand-600">
+            <Link to="/login" className="text-primary">
               sign in
             </Link>
             .
           </p>
-        </div>
+        </Card>
       </div>
     );
   }
@@ -73,13 +77,13 @@ export default function Register() {
   return (
     <div className="mx-auto max-w-2xl p-6">
       <div className="mb-6">
-        <h1 className="text-2xl font-bold text-gray-900">Register New User</h1>
-        <p className="text-sm text-gray-500">
+        <h1 className="text-2xl font-bold tracking-tight">Register New User</h1>
+        <p className="text-sm text-muted-foreground">
           Create a faculty or student account.
         </p>
       </div>
 
-      <div className="card p-6">
+      <Card className="p-6">
         <form
           className="grid grid-cols-1 gap-4 sm:grid-cols-2"
           onSubmit={handleSubmit(onSubmit)}
@@ -115,17 +119,22 @@ export default function Register() {
             })}
           />
           <div>
-            <label className="label">Role</label>
-            <select
-              className="input"
-              {...register("role", { required: "Required" })}
+            <Label>Role</Label>
+            <Select
+              value={watch("role")}
+              onValueChange={(v) => setValue("role", v, { shouldValidate: true })}
             >
-              {ROLES.map((r) => (
-                <option key={r.value} value={r.value}>
-                  {r.label}
-                </option>
-              ))}
-            </select>
+              <SelectTrigger>
+                <SelectValue placeholder="Select role" />
+              </SelectTrigger>
+              <SelectContent>
+                {ROLES.map((r) => (
+                  <SelectItem key={r.value} value={r.value}>
+                    {r.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
           <Input
             label="Password"
@@ -149,7 +158,7 @@ export default function Register() {
           <div className="sm:col-span-2 flex justify-end gap-2">
             <Button
               type="button"
-              variant="secondary"
+              variant="outline"
               onClick={() => navigate(-1)}
             >
               Cancel
@@ -159,7 +168,7 @@ export default function Register() {
             </Button>
           </div>
         </form>
-      </div>
+      </Card>
     </div>
   );
 }

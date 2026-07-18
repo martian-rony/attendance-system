@@ -6,16 +6,16 @@ export default function NotFound() {
   const home = user ? `/${user.role}` : "/login";
   return (
     <div className="flex min-h-full flex-col items-center justify-center p-6">
-      <p className="text-6xl font-bold text-brand-600">404</p>
-      <h1 className="mt-4 text-xl font-semibold text-gray-900">
+      <p className="text-6xl font-bold text-primary">404</p>
+      <h1 className="mt-4 text-xl font-semibold text-foreground">
         Page not found
       </h1>
-      <p className="mt-2 text-sm text-gray-500">
+      <p className="mt-2 text-sm text-muted-foreground">
         The page you&apos;re looking for doesn&apos;t exist.
       </p>
       <Link
         to={home}
-        className="mt-6 rounded-xl bg-brand-600 px-4 py-2 text-sm font-medium text-white hover:bg-brand-700"
+        className="mt-6 rounded-xl bg-primary px-4 py-2 text-sm font-medium text-white hover:bg-primary/90"
       >
         Back to dashboard
       </Link>

@@ -145,8 +145,8 @@ export default function StudentAttendance() {
       </Select>
 
       <Card>
-        <div className="border-b border-gray-100 px-4 py-3">
-          <h3 className="font-semibold text-gray-900">
+        <div className="border-b border-border px-4 py-3">
+          <h3 className="font-semibold text-foreground">
             My Attendance ({records.length})
           </h3>
         </div>
@@ -177,12 +177,12 @@ export default function StudentAttendance() {
         }
       >
         <div className="space-y-3">
-          <p className="text-sm text-gray-600">
+          <p className="text-sm text-muted-foreground">
             {dispute?.session?.title || "This session"} — current status:{" "}
             <span className="font-medium">{dispute?.status}</span>
           </p>
           <div>
-            <label className="mb-1 block text-sm font-medium text-gray-700">
+            <label className="mb-1 block text-sm font-medium text-foreground">
               Requested status
             </label>
             <FormSelect
@@ -197,7 +197,7 @@ export default function StudentAttendance() {
             </FormSelect>
           </div>
           <div>
-            <label className="mb-1 block text-sm font-medium text-gray-700">
+            <label className="mb-1 block text-sm font-medium text-foreground">
               Reason
             </label>
             <Textarea
@@ -210,7 +210,7 @@ export default function StudentAttendance() {
             />
           </div>
           <div>
-            <label className="mb-1 block text-sm font-medium text-gray-700">
+            <label className="mb-1 block text-sm font-medium text-foreground">
               Evidence URL (optional)
             </label>
             <Input
@@ -221,7 +221,7 @@ export default function StudentAttendance() {
               }
             />
           </div>
-          {formError && <p className="text-sm text-danger-600">{formError}</p>}
+          {formError && <p className="text-sm text-destructive">{formError}</p>}
         </div>
       </Modal>
     </div>

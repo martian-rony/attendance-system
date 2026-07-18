@@ -17,6 +17,13 @@ import {
   ErrorAlert,
   Avatar,
 } from "../../components/ui/index.jsx";
+import { Label } from "../../components/ui/label.jsx";
+import {
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "../../components/ui/select.jsx";
 import { useAuth } from "../../contexts/AuthContext.jsx";
 import { useRealtimeInvalidation } from "../../hooks/useRealtimeInvalidation.js";
 
@@ -42,6 +49,8 @@ export default function AdminUsers() {
     register,
     handleSubmit,
     reset,
+    watch,
+    setValue,
     formState: { errors, isSubmitting },
   } = useForm({
     defaultValues: {
@@ -91,10 +100,10 @@ export default function AdminUsers() {
         <div className="flex items-center gap-3">
           <Avatar name={`${row.firstName} ${row.lastName}`} src={row.avatar} />
           <div>
-            <p className="font-medium text-gray-900">
+            <p className="font-medium text-foreground">
               {row.firstName} {row.lastName}
             </p>
-            <p className="text-xs text-gray-500">{row.email}</p>
+            <p className="text-xs text-muted-foreground">{row.email}</p>
           </div>
         </div>
       ),
@@ -153,7 +162,7 @@ export default function AdminUsers() {
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div className="flex flex-1 gap-2">
           <div className="relative flex-1 max-w-xs">
-            <Search className="absolute left-3 top-2.5 h-4 w-4 text-gray-400" />
+            <Search className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground/70" />
             <Input
               className="pl-9"
               placeholder="Search users..."
@@ -193,8 +202,8 @@ export default function AdminUsers() {
           emptyMessage="No users found"
         />
         {meta.totalPages > 1 && (
-          <div className="flex items-center justify-between border-t border-gray-100 px-4 py-3">
-            <p className="text-sm text-gray-500">
+          <div className="flex items-center justify-between border-t border-border px-4 py-3">
+            <p className="text-sm text-muted-foreground">
               Page {meta.page} of {meta.totalPages}
             </p>
             <div className="flex gap-2">
@@ -240,7 +249,7 @@ export default function AdminUsers() {
           </>
         }
       >
-        <p className="text-sm text-gray-600">
+        <p className="text-sm text-muted-foreground">
           Are you sure you want to deactivate{" "}
           <span className="font-medium">
             {confirmDeactivate?.firstName} {confirmDeactivate?.lastName}
@@ -293,14 +302,22 @@ export default function AdminUsers() {
             })}
           />
           <div>
-            <label className="label">Role</label>
-            <select className="input" {...register("role", { required: "Required" })}>
-              {ROLES.map((r) => (
-                <option key={r.value} value={r.value}>
-                  {r.label}
-                </option>
-              ))}
-            </select>
+            <Label>Role</Label>
+            <Select
+              value={watch("role")}
+              onValueChange={(v) => setValue("role", v, { shouldValidate: true })}
+            >
+              <SelectTrigger>
+                <SelectValue placeholder="Select role" />
+              </SelectTrigger>
+              <SelectContent>
+                {ROLES.map((r) => (
+                  <SelectItem key={r.value} value={r.value}>
+                    {r.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
           <Input
             label="Password"

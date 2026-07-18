@@ -19,7 +19,7 @@ export class ErrorBoundary extends Component {
     if (this.state.hasError) {
       return (
         this.props.fallback ?? (
-          <div className="rounded-2xl border border-danger-200 bg-danger-50 p-4 text-center text-sm text-danger-700">
+          <div className="rounded-xl border border-danger-200 bg-destructive/10 p-4 text-center text-sm text-destructive">
             Something went wrong loading this section.
           </div>
         )

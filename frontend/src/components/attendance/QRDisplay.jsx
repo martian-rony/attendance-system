@@ -58,7 +58,7 @@ export function QRDisplay({ sessionId, className }) {
         <Spinner />
       </div>
     );
-  if (error) return <p className="text-sm text-danger-600">{error}</p>;
+  if (error) return <p className="text-sm text-destructive">{error}</p>;
   if (!qr) return null;
 
   const qrImage = qr.qrCodeImage || qr.qrCodeDataUrl;
@@ -69,17 +69,17 @@ export function QRDisplay({ sessionId, className }) {
 
   return (
     <div className={cn("flex flex-col items-center", className)}>
-      <div className="rounded-2xl border border-gray-200 bg-white p-4 shadow-card">
+      <div className="rounded-xl border border-border bg-white p-4 shadow-sm">
         <img src={qrImage} alt="Attendance QR" className="h-56 w-56" />
       </div>
       <button
         type="button"
         onClick={copyToken}
-        className="mt-3 inline-flex items-center gap-1.5 rounded-lg border border-gray-300 bg-white px-3 py-1.5 text-xs font-medium text-gray-700 transition hover:bg-gray-50"
+        className="mt-3 inline-flex items-center gap-1.5 rounded-lg border border-input bg-white px-3 py-1.5 text-xs font-medium text-foreground transition hover:bg-muted/40"
       >
         {copied ? (
           <>
-            <Check className="h-3.5 w-3.5 text-success-600" /> Copied!
+            <Check className="h-3.5 w-3.5 text-success" /> Copied!
           </>
         ) : (
           <>
@@ -87,16 +87,16 @@ export function QRDisplay({ sessionId, className }) {
           </>
         )}
       </button>
-      <div className="mt-3 text-center text-xs text-gray-500">
+      <div className="mt-3 text-center text-xs text-muted-foreground">
         <p>
           Code refreshes at:{" "}
-          <span className="font-medium text-gray-700">
+          <span className="font-medium text-foreground">
             {formatTime(expiresAt)}
           </span>
         </p>
         <p className="mt-1">
           Session ends:{" "}
-          <span className="font-medium text-gray-700">
+          <span className="font-medium text-foreground">
             {formatTime(sessionEnd)}
           </span>
         </p>

@@ -52,10 +52,10 @@ export default function FacultyReports() {
           <span
             className={
               rate >= 75
-                ? "text-success-600"
+                ? "text-success"
                 : rate >= 60
-                  ? "text-warning-600"
-                  : "text-danger-600"
+                  ? "text-warning"
+                  : "text-destructive"
             }
           >
             {rate.toFixed(1)}%
@@ -84,8 +84,8 @@ export default function FacultyReports() {
       </Select>
 
       <Card>
-        <div className="border-b border-gray-100 px-4 py-3">
-          <h3 className="font-semibold text-gray-900">Attendance Report</h3>
+        <div className="border-b border-border px-4 py-3">
+          <h3 className="font-semibold text-foreground">Attendance Report</h3>
         </div>
         <DataTable
           columns={columns}

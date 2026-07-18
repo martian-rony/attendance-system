@@ -115,18 +115,18 @@ export function QRScanner({ onScan, onError }) {
           injects here; it owns that DOM subtree entirely. */}
       <div
         id={elementId}
-        className="w-full max-w-sm overflow-hidden rounded-2xl border border-gray-200"
+        className="w-full max-w-sm overflow-hidden rounded-xl border border-border"
       />
       {status === "loading" && (
-        <p className="mt-2 text-sm text-gray-500">Starting camera…</p>
+        <p className="mt-2 text-sm text-muted-foreground">Starting camera…</p>
       )}
       {status === "error" && (
         <div className="mt-2 flex flex-col items-center gap-2">
-          <p className="text-sm text-danger-600">{error}</p>
+          <p className="text-sm text-destructive">{error}</p>
           <button
             type="button"
             onClick={() => setAttempt((a) => a + 1)}
-            className="rounded-lg border border-gray-300 px-3 py-1 text-xs font-medium text-gray-700 hover:bg-gray-50"
+            className="rounded-lg border border-input px-3 py-1 text-xs font-medium text-foreground hover:bg-muted/40"
           >
             Retry camera
           </button>

@@ -25,22 +25,22 @@ export default function FacultyCourses() {
       {courses.map((c) => (
         <Card key={c._id} className="p-5">
           <div className="flex items-start justify-between">
-            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-brand-50 text-brand-600">
+            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-accent text-primary">
               <BookOpen className="h-5 w-5" />
             </div>
             <Badge color={c.isActive ? "green" : "red"}>
               {c.isActive ? "Active" : "Inactive"}
             </Badge>
           </div>
-          <h3 className="mt-3 font-semibold text-gray-900">{c.code}</h3>
-          <p className="text-sm text-gray-500">{c.name}</p>
-          <div className="mt-3 flex items-center justify-between text-sm text-gray-600">
+          <h3 className="mt-3 font-semibold text-foreground">{c.code}</h3>
+          <p className="text-sm text-muted-foreground">{c.name}</p>
+          <div className="mt-3 flex items-center justify-between text-sm text-muted-foreground">
             <span className="flex items-center gap-1">
               <Users className="h-4 w-4" /> {c.enrolledCount || 0} students
             </span>
             <Link
               to={`/faculty/sessions?course=${c._id}`}
-              className="font-medium text-brand-600 hover:text-brand-700"
+              className="font-medium text-primary hover:text-primary"
             >
               Sessions →
             </Link>
@@ -48,7 +48,7 @@ export default function FacultyCourses() {
         </Card>
       ))}
       {courses.length === 0 && (
-        <p className="col-span-full text-center text-sm text-gray-400">
+        <p className="col-span-full text-center text-sm text-muted-foreground/70">
           You have no assigned courses.
         </p>
       )}

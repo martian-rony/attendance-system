@@ -35,8 +35,8 @@ export default function StudentBrowse() {
   return (
     <div className="space-y-4">
       <div>
-        <h2 className="text-xl font-bold text-gray-900">Browse Courses</h2>
-        <p className="text-sm text-gray-500">
+        <h2 className="text-xl font-bold text-foreground">Browse Courses</h2>
+        <p className="text-sm text-muted-foreground">
           Join the courses you're taking this term.
         </p>
       </div>
@@ -44,15 +44,15 @@ export default function StudentBrowse() {
       <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
         {courses.map((c) => (
           <Card key={c._id} className="flex flex-col p-5">
-            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-brand-50 text-brand-600">
+            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-accent text-primary">
               <BookOpen className="h-5 w-5" />
             </div>
-            <h3 className="mt-3 font-semibold text-gray-900">{c.code}</h3>
-            <p className="text-sm text-gray-500">{c.name}</p>
-            <p className="mt-1 text-xs text-gray-400">
+            <h3 className="mt-3 font-semibold text-foreground">{c.code}</h3>
+            <p className="text-sm text-muted-foreground">{c.name}</p>
+            <p className="mt-1 text-xs text-muted-foreground/70">
               {c.department} · {c.program?.toUpperCase()} Y{c.year}S{c.semester}
             </p>
-            <p className="mt-1 text-xs text-gray-400">
+            <p className="mt-1 text-xs text-muted-foreground/70">
               {c.faculty
                 ? `${c.faculty.firstName} ${c.faculty.lastName}`
                 : "TBA"}
@@ -85,7 +85,7 @@ export default function StudentBrowse() {
           </Card>
         ))}
         {courses.length === 0 && (
-          <p className="col-span-full text-center text-sm text-gray-400">
+          <p className="col-span-full text-center text-sm text-muted-foreground/70">
             No courses are open for enrollment yet.
           </p>
         )}

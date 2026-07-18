@@ -1,88 +1,95 @@
 import { cn } from "../../utils/helpers.js";
+// Explicit imports for primitives used by the legacy helpers defined in this
+// file. `export *` re-exports them to consumers but does NOT bring the binding
+// into this module's own scope, so they must be imported here too.
+import { Card } from "./card.jsx";
+import { Spinner } from "./spinner.jsx";
 
-export * from "./form.jsx";
+// Re-export shadcn-style primitives
+export * from "./button.jsx";
+export * from "./card.jsx";
+export * from "./input.jsx";
+export * from "./label.jsx";
+export * from "./badge.jsx";
+export * from "./dialog.jsx";
+export * from "./textarea.jsx";
+export * from "./table.jsx";
+export * from "./select.jsx";
+export * from "./dropdown-menu.jsx";
+export * from "./tabs.jsx";
+export * from "./avatar.jsx";
+export * from "./separator.jsx";
+export * from "./sheet.jsx";
+export * from "./skeleton.jsx";
+export * from "./switch.jsx";
+export * from "./tooltip.jsx";
+export * from "./sonner.jsx";
+export * from "./spinner.jsx";
 
-export function Button({
-  variant = "primary",
-  size = "md",
-  className,
-  children,
-  ...props
-}) {
-  const variants = {
-    primary: "bg-brand-600 text-white hover:bg-brand-700",
-    secondary: "bg-white text-gray-700 border border-gray-300 hover:bg-gray-50",
-    danger: "bg-danger-600 text-white hover:bg-danger-700",
-    ghost: "text-gray-600 hover:bg-gray-100",
-    success: "bg-success-600 text-white hover:bg-success-700",
-  };
-  const sizes = {
-    sm: "px-3 py-1.5 text-xs",
-    md: "px-4 py-2 text-sm",
-    lg: "px-6 py-3 text-base",
+export { cn };
+
+// DataTable is still provided by form.jsx (kept during migration).
+export { DataTable } from "./form.jsx";
+
+// ---- Legacy helpers retained for incremental migration ----
+// These use the new token classes where possible so existing pages keep working
+// and render consistently with the shadcn system.
+
+export function StatCard({ title, value, icon: Icon, color = "primary", subtitle }) {
+  const colors = {
+    primary: "text-primary bg-primary/10",
+    success: "text-success bg-success/10",
+    destructive: "text-destructive bg-destructive/10",
+    warning: "text-warning bg-warning/10",
   };
   return (
-    <button
-      className={cn(
-        "inline-flex items-center justify-center gap-2 rounded-xl font-medium transition-colors focus:outline-none focus:ring-2 focus:ring-brand-500 focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50",
-        variants[variant],
-        sizes[size],
-        className,
-      )}
-      {...props}
-    >
-      {children}
-    </button>
+    <Card className="p-5">
+      <div className="flex items-start justify-between">
+        <div>
+          <p className="text-sm font-medium text-muted-foreground">{title}</p>
+          <p className="mt-2 text-3xl font-bold tracking-tight text-foreground">
+            {value}
+          </p>
+          {subtitle && <p className="mt-1 text-xs text-muted-foreground">{subtitle}</p>}
+        </div>
+        {Icon && (
+          <div className={cn("rounded-xl p-3", colors[color])}>
+            <Icon className="h-6 w-6" />
+          </div>
+        )}
+      </div>
+    </Card>
   );
 }
 
-export function Card({ className, children, ...props }) {
+export function EmptyState({ icon: Icon, title, description, action }) {
   return (
-    <div
-      className={cn(
-        "rounded-2xl bg-white shadow-card border border-gray-100",
-        className,
+    <div className="flex flex-col items-center justify-center rounded-xl border border-dashed border-border px-6 py-12 text-center">
+      {Icon && <Icon className="h-12 w-12 text-muted-foreground/50" />}
+      <h3 className="mt-3 text-sm font-medium text-foreground">{title}</h3>
+      {description && (
+        <p className="mt-1 max-w-sm text-sm text-muted-foreground">{description}</p>
       )}
-      {...props}
-    >
-      {children}
+      {action && <div className="mt-4">{action}</div>}
     </div>
   );
 }
 
-export function Badge({ color = "gray", className, children }) {
-  const colors = {
-    gray: "bg-gray-100 text-gray-700",
-    green: "bg-success-50 text-success-700",
-    red: "bg-danger-50 text-danger-700",
-    yellow: "bg-warning-50 text-warning-600",
-    blue: "bg-brand-50 text-brand-700",
-  };
+export function ErrorAlert({ message }) {
+  if (!message) return null;
   return (
-    <span
-      className={cn(
-        "inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium",
-        colors[color],
-        className,
-      )}
-    >
-      {children}
-    </span>
+    <div className="rounded-md border border-destructive/30 bg-destructive/10 px-4 py-3 text-sm text-destructive">
+      {message}
+    </div>
   );
 }
 
-export function Spinner({ size = "md", className }) {
-  const sizes = { sm: "h-4 w-4", md: "h-8 w-8", lg: "h-12 w-12" };
+export function SuccessAlert({ message }) {
+  if (!message) return null;
   return (
-    <div
-      className={cn(
-        "animate-spin rounded-full border-2 border-gray-300 border-t-brand-600",
-        sizes[size],
-        className,
-      )}
-      role="status"
-      aria-label="Loading"
-    />
+    <div className="rounded-md border border-success/30 bg-success/10 px-4 py-3 text-sm text-success">
+      {message}
+    </div>
   );
 }
 
@@ -91,108 +98,43 @@ export function LoadingScreen({ message = "Loading..." }) {
     <div className="flex h-full items-center justify-center">
       <div className="flex flex-col items-center gap-3">
         <Spinner size="lg" />
-        <p className="text-sm text-gray-500">{message}</p>
+        <p className="text-sm text-muted-foreground">{message}</p>
       </div>
     </div>
   );
 }
 
+// Legacy modal kept for pages not yet migrated to Dialog.
 export function Modal({ open, onClose, title, children, footer, size = "md" }) {
   if (!open) return null;
-  const sizes = {
-    sm: "max-w-md",
-    md: "max-w-lg",
-    lg: "max-w-2xl",
-    xl: "max-w-4xl",
-  };
+  const sizes = { sm: "max-w-md", md: "max-w-lg", lg: "max-w-2xl", xl: "max-w-4xl" };
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-      <div
-        className="fixed inset-0 bg-black/40 backdrop-blur-sm"
-        onClick={onClose}
-      />
+      <div className="fixed inset-0 bg-black/40 backdrop-blur-sm" onClick={onClose} />
       <div
         className={cn(
-          "relative w-full rounded-2xl bg-white shadow-xl animate-fade-in",
+          "relative w-full rounded-xl border bg-background text-foreground shadow-xl animate-fade-in",
           sizes[size],
         )}
       >
-        <div className="flex items-center justify-between border-b border-gray-100 px-6 py-4">
-          <h3 className="text-lg font-semibold text-gray-900">{title}</h3>
+        <div className="flex items-center justify-between border-b border-border px-6 py-4">
+          <h3 className="text-lg font-semibold">{title}</h3>
           <button
             onClick={onClose}
-            className="rounded-lg p-1 text-gray-400 hover:bg-gray-100 hover:text-gray-600"
+            className="rounded-lg p-1 text-muted-foreground hover:bg-muted hover:text-foreground"
           >
-            <svg
-              className="h-5 w-5"
-              fill="none"
-              viewBox="0 0 24 24"
-              stroke="currentColor"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M6 18L18 6M6 6l12 12"
-              />
+            <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
             </svg>
           </button>
         </div>
         <div className="px-6 py-4">{children}</div>
         {footer && (
-          <div className="flex justify-end gap-2 border-t border-gray-100 px-6 py-4">
+          <div className="flex justify-end gap-2 border-t border-border px-6 py-4">
             {footer}
           </div>
         )}
       </div>
-    </div>
-  );
-}
-
-export function StatCard({
-  title,
-  value,
-  icon: Icon,
-  color = "brand",
-  subtitle,
-  trend,
-}) {
-  const colors = {
-    brand: "text-brand-600 bg-brand-50",
-    green: "text-success-600 bg-success-50",
-    red: "text-danger-600 bg-danger-50",
-    yellow: "text-warning-600 bg-warning-50",
-  };
-  return (
-    <Card className="p-5">
-      <div className="flex items-start justify-between">
-        <div>
-          <p className="text-sm font-medium text-gray-500">{title}</p>
-          <p className="mt-2 text-3xl font-bold text-gray-900">{value}</p>
-          {subtitle && <p className="mt-1 text-xs text-gray-400">{subtitle}</p>}
-        </div>
-        {Icon && (
-          <div className={cn("rounded-xl p-3", colors[color])}>
-            <Icon className="h-6 w-6" />
-          </div>
-        )}
-      </div>
-      {trend && (
-        <p className="mt-3 text-xs font-medium text-gray-500">{trend}</p>
-      )}
-    </Card>
-  );
-}
-
-export function EmptyState({ icon: Icon, title, description, action }) {
-  return (
-    <div className="flex flex-col items-center justify-center rounded-2xl border-2 border-dashed border-gray-200 px-6 py-12 text-center">
-      {Icon && <Icon className="h-12 w-12 text-gray-300" />}
-      <h3 className="mt-3 text-sm font-medium text-gray-900">{title}</h3>
-      {description && (
-        <p className="mt-1 max-w-sm text-sm text-gray-500">{description}</p>
-      )}
-      {action && <div className="mt-4">{action}</div>}
     </div>
   );
 }

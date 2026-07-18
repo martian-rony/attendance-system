@@ -40,10 +40,10 @@ export default function AdminSessions() {
         <Card key={s._id} className="p-4">
           <div className="flex items-start justify-between">
             <div>
-              <p className="font-semibold text-gray-900">
+              <p className="font-semibold text-foreground">
                 {s.course?.code} — {s.title}
               </p>
-              <p className="text-xs text-gray-500">{s.course?.name}</p>
+              <p className="text-xs text-muted-foreground">{s.course?.name}</p>
             </div>
             <Badge
               color={
@@ -57,7 +57,7 @@ export default function AdminSessions() {
               {s.status}
             </Badge>
           </div>
-          <div className="mt-3 space-y-1 text-sm text-gray-600">
+          <div className="mt-3 space-y-1 text-sm text-muted-foreground">
             <p>📅 {formatDateTime(s.date)}</p>
             <p>
               ⏰ {s.startTime} – {s.endTime}
@@ -69,7 +69,7 @@ export default function AdminSessions() {
           {s.status === "active" && (
             <Link
               to={`/faculty/sessions/${s._id}`}
-              className="mt-3 inline-block text-sm font-medium text-brand-600 hover:text-brand-700"
+              className="mt-3 inline-block text-sm font-medium text-primary hover:text-primary"
             >
               View live session →
             </Link>

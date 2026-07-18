@@ -133,9 +133,9 @@ export default function AdminReports() {
       </div>
 
       <Card>
-        <div className="border-b border-gray-100 px-4 py-3">
-          <h3 className="font-semibold text-gray-900">Attendance Report</h3>
-          <p className="text-xs text-gray-500">
+        <div className="border-b border-border px-4 py-3">
+          <h3 className="font-semibold text-foreground">Attendance Report</h3>
+          <p className="text-xs text-muted-foreground">
             {courseId
               ? "Course report"
               : department

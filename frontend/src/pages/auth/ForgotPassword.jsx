@@ -6,6 +6,7 @@ import {
   Input,
   ErrorAlert,
   SuccessAlert,
+  Card,
 } from "../../components/ui/index.jsx";
 import { authAPI } from "../../api/index.js";
 
@@ -37,9 +38,9 @@ export default function ForgotPassword() {
   return (
     <div className="flex min-h-full items-center justify-center px-6 py-12">
       <div className="w-full max-w-md">
-        <div className="card p-8">
-          <h2 className="text-xl font-bold text-gray-900">Forgot Password</h2>
-          <p className="mt-1 text-sm text-gray-500">
+        <Card className="p-8">
+          <h2 className="text-xl font-bold tracking-tight">Forgot Password</h2>
+          <p className="mt-1 text-sm text-muted-foreground">
             Enter your email to receive a reset link.
           </p>
           <form className="mt-6 space-y-4" onSubmit={handleSubmit(onSubmit)}>
@@ -56,11 +57,11 @@ export default function ForgotPassword() {
             </Button>
           </form>
           <p className="mt-4 text-center text-sm">
-            <Link to="/login" className="text-brand-600">
+            <Link to="/login" className="text-primary">
               Back to sign in
             </Link>
           </p>
-        </div>
+        </Card>
       </div>
     </div>
   );
@@ -78,10 +79,13 @@ export function ResetPassword() {
     setValue,
     formState: { errors },
   } = useForm({
-    defaultValues: { token: searchParams.get("token") || "", password: "", confirmPassword: "" },
+    defaultValues: {
+      token: searchParams.get("token") || "",
+      password: "",
+      confirmPassword: "",
+    },
   });
 
-  // If the link carried a token, surface it in the field automatically.
   const urlToken = searchParams.get("token");
   if (urlToken) setValue("token", urlToken, { shouldValidate: false });
   const password = watch("password");
@@ -107,8 +111,8 @@ export function ResetPassword() {
   return (
     <div className="flex min-h-full items-center justify-center px-6 py-12">
       <div className="w-full max-w-md">
-        <div className="card p-8">
-          <h2 className="text-xl font-bold text-gray-900">Reset Password</h2>
+        <Card className="p-8">
+          <h2 className="text-xl font-bold tracking-tight">Reset Password</h2>
           <form className="mt-6 space-y-4" onSubmit={handleSubmit(onSubmit)}>
             {error && <ErrorAlert message={error} />}
             {success && <SuccessAlert message={success} />}
@@ -139,7 +143,7 @@ export function ResetPassword() {
               {loading ? "Resetting..." : "Reset Password"}
             </Button>
           </form>
-        </div>
+        </Card>
       </div>
     </div>
   );

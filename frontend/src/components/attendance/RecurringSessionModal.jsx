@@ -85,7 +85,7 @@ export function RecurringSessionModal({ open, onClose, courses }) {
     >
       <div className="space-y-3">
         <div>
-          <label className="mb-1 block text-sm font-medium text-gray-700">
+          <label className="mb-1 block text-sm font-medium text-foreground">
             Course
           </label>
           <Select
@@ -102,7 +102,7 @@ export function RecurringSessionModal({ open, onClose, courses }) {
         </div>
 
         <div>
-          <label className="mb-1 block text-sm font-medium text-gray-700">
+          <label className="mb-1 block text-sm font-medium text-foreground">
             Title (optional)
           </label>
           <Input
@@ -114,7 +114,7 @@ export function RecurringSessionModal({ open, onClose, courses }) {
 
         <div className="grid grid-cols-2 gap-3">
           <div>
-            <label className="mb-1 block text-sm font-medium text-gray-700">
+            <label className="mb-1 block text-sm font-medium text-foreground">
               Start time
             </label>
             <Input
@@ -126,7 +126,7 @@ export function RecurringSessionModal({ open, onClose, courses }) {
             />
           </div>
           <div>
-            <label className="mb-1 block text-sm font-medium text-gray-700">
+            <label className="mb-1 block text-sm font-medium text-foreground">
               End time
             </label>
             <Input
@@ -140,7 +140,7 @@ export function RecurringSessionModal({ open, onClose, courses }) {
         </div>
 
         <div>
-          <label className="mb-1 block text-sm font-medium text-gray-700">
+          <label className="mb-1 block text-sm font-medium text-foreground">
             Repeat on
           </label>
           <div className="flex flex-wrap gap-1.5">
@@ -151,8 +151,8 @@ export function RecurringSessionModal({ open, onClose, courses }) {
                 onClick={() => toggleDay(d.v)}
                 className={`rounded-lg px-3 py-1.5 text-sm font-medium transition ${
                   days.includes(d.v)
-                    ? "bg-brand-600 text-white"
-                    : "border border-gray-300 bg-white text-gray-600 hover:bg-gray-50"
+                    ? "bg-primary text-white"
+                    : "border border-input bg-white text-muted-foreground hover:bg-muted/40"
                 }`}
               >
                 {d.label}
@@ -163,7 +163,7 @@ export function RecurringSessionModal({ open, onClose, courses }) {
 
         <div className="grid grid-cols-2 gap-3">
           <div>
-            <label className="mb-1 block text-sm font-medium text-gray-700">
+            <label className="mb-1 block text-sm font-medium text-foreground">
               From
             </label>
             <Input
@@ -175,7 +175,7 @@ export function RecurringSessionModal({ open, onClose, courses }) {
             />
           </div>
           <div>
-            <label className="mb-1 block text-sm font-medium text-gray-700">
+            <label className="mb-1 block text-sm font-medium text-foreground">
               To
             </label>
             <Input
@@ -188,9 +188,9 @@ export function RecurringSessionModal({ open, onClose, courses }) {
           </div>
         </div>
 
-        {error && <p className="text-sm text-danger-600">{error}</p>}
+        {error && <p className="text-sm text-destructive">{error}</p>}
         {result && (
-          <div className="rounded-xl border border-success-200 bg-success-50 p-3 text-sm text-success-700">
+          <div className="rounded-xl border border-success-200 bg-success/10 p-3 text-sm text-success">
             Created {result.count} sessions. They will auto-open and auto-close
             on schedule.
           </div>

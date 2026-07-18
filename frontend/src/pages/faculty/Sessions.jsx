@@ -14,6 +14,14 @@ import {
   Textarea,
   Badge,
 } from "../../components/ui/index.jsx";
+import { Label } from "../../components/ui/label.jsx";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "../../components/ui/select.jsx";
 import { useAuth } from "../../contexts/AuthContext.jsx";
 import { useForm } from "react-hook-form";
 import { formatDateTime } from "../../utils/helpers.js";
@@ -181,10 +189,10 @@ export default function FacultySessions() {
           <Card key={s._id} className="p-4">
             <div className="flex items-start justify-between">
               <div>
-                <p className="font-semibold text-gray-900">
+                <p className="font-semibold text-foreground">
                   {s.course?.code} — {s.title}
                 </p>
-                <p className="text-xs text-gray-500">{s.course?.name}</p>
+                <p className="text-xs text-muted-foreground">{s.course?.name}</p>
               </div>
               <Badge
                 color={
@@ -198,7 +206,7 @@ export default function FacultySessions() {
                 {s.status}
               </Badge>
             </div>
-            <div className="mt-3 space-y-1 text-sm text-gray-600">
+            <div className="mt-3 space-y-1 text-sm text-muted-foreground">
               <p>📅 {formatDateTime(s.date)}</p>
               <p>
                 ⏰ {s.startTime} – {s.endTime}
@@ -255,18 +263,24 @@ export default function FacultySessions() {
       >
         <div className="grid grid-cols-2 gap-4">
           <div className="col-span-2">
-            <label className="label">Course</label>
-            <select
-              className="input"
-              {...register("courseId", { required: "Required" })}
+            <Label>Course</Label>
+            <Select
+              value={watch("courseId")}
+              onValueChange={(v) =>
+                setValue("courseId", v, { shouldValidate: true })
+              }
             >
-              <option value="">Select course</option>
-              {myCourses.map((c) => (
-                <option key={c._id} value={c._id}>
-                  {c.code} — {c.name}
-                </option>
-              ))}
-            </select>
+              <SelectTrigger>
+                <SelectValue placeholder="Select course" />
+              </SelectTrigger>
+              <SelectContent>
+                {myCourses.map((c) => (
+                  <SelectItem key={c._id} value={c._id}>
+                    {c.code} — {c.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
           <div className="col-span-2">
             <Input
@@ -314,12 +328,12 @@ export default function FacultySessions() {
               </Button>
             </div>
             {latVal && lngVal && (
-              <p className="mt-1 text-xs text-success-600">
+              <p className="mt-1 text-xs text-success">
                 📍 Captured: {latVal}, {lngVal}
               </p>
             )}
             {locError && (
-              <p className="mt-1 text-xs text-danger-600">{locError}</p>
+              <p className="mt-1 text-xs text-destructive">{locError}</p>
             )}
           </div>
           <Input

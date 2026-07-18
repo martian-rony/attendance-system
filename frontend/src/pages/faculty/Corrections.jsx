@@ -49,8 +49,8 @@ export default function FacultyCorrections() {
             onClick={() => setFilter(s)}
             className={`rounded-lg px-3 py-1.5 text-sm font-medium capitalize transition ${
               filter === s
-                ? "bg-brand-600 text-white"
-                : "bg-white text-gray-600 border border-gray-200 hover:bg-gray-50"
+                ? "bg-primary text-white"
+                : "bg-white text-muted-foreground border border-border hover:bg-muted/40"
             }`}
           >
             {s || "all"}
@@ -71,20 +71,20 @@ export default function FacultyCorrections() {
               <div className="flex flex-wrap items-start justify-between gap-3">
                 <div className="min-w-0 flex-1">
                   <div className="flex items-center gap-2">
-                    <span className="font-semibold text-gray-900">
+                    <span className="font-semibold text-foreground">
                       {c.student?.firstName} {c.student?.lastName}
                     </span>
                     <Badge color={STATUS_COLOR[c.status]}>{c.status}</Badge>
                   </div>
-                  <p className="mt-1 text-sm text-gray-600">
+                  <p className="mt-1 text-sm text-muted-foreground">
                     {c.course?.code} · {c.session?.title || "Session"} ·{" "}
                     {formatDate(c.session?.date)}
                   </p>
-                  <p className="mt-2 text-sm text-gray-700">
+                  <p className="mt-2 text-sm text-foreground">
                     Requested status:{" "}
                     <span className="font-medium">{c.requestedStatus}</span>
                   </p>
-                  <p className="mt-1 text-sm text-gray-600">
+                  <p className="mt-1 text-sm text-muted-foreground">
                     Reason: {c.reason}
                   </p>
                   {c.evidenceUrl && (
@@ -92,13 +92,13 @@ export default function FacultyCorrections() {
                       href={c.evidenceUrl}
                       target="_blank"
                       rel="noreferrer"
-                      className="mt-1 inline-block text-xs font-medium text-brand-600 hover:underline"
+                      className="mt-1 inline-block text-xs font-medium text-primary hover:underline"
                     >
                       View evidence
                     </a>
                   )}
                   {c.status !== "pending" && c.resolutionNote && (
-                    <p className="mt-2 text-xs text-gray-500">
+                    <p className="mt-2 text-xs text-muted-foreground">
                       Resolution note: {c.resolutionNote}
                     </p>
                   )}
@@ -106,7 +106,7 @@ export default function FacultyCorrections() {
               </div>
 
               {c.status === "pending" && (
-                <div className="mt-3 border-t border-gray-100 pt-3">
+                <div className="mt-3 border-t border-border pt-3">
                   <Textarea
                     placeholder="Optional note to the student…"
                     rows={2}

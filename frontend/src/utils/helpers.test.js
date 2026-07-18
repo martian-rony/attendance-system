@@ -57,6 +57,6 @@ describe("getStatusColor", () => {
     expect(getStatusColor("excused")).toContain("brand");
   });
   it("falls back for unknown status", () => {
-    expect(getStatusColor("weird")).toBe("bg-gray-100 text-gray-700");
+    expect(getStatusColor("weird")).toBe("bg-muted text-foreground");
   });
 });

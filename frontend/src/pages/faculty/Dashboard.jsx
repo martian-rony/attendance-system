@@ -32,10 +32,10 @@ export default function FacultyDashboard() {
   return (
     <div className="space-y-6">
       <div>
-        <h2 className="text-xl font-bold text-gray-900">
+        <h2 className="text-xl font-bold text-foreground">
           Welcome, {user?.firstName}
         </h2>
-        <p className="text-sm text-gray-500">Your teaching overview.</p>
+        <p className="text-sm text-muted-foreground">Your teaching overview.</p>
       </div>
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
@@ -68,10 +68,10 @@ export default function FacultyDashboard() {
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
         <Card className="p-5">
           <div className="mb-3 flex items-center justify-between">
-            <h3 className="font-semibold text-gray-900">Active Sessions</h3>
+            <h3 className="font-semibold text-foreground">Active Sessions</h3>
           </div>
           {activeSessions.length === 0 ? (
-            <p className="text-sm text-gray-400">
+            <p className="text-sm text-muted-foreground/70">
               No active sessions right now.
             </p>
           ) : (
@@ -80,12 +80,12 @@ export default function FacultyDashboard() {
                 <Link
                   key={s._id}
                   to={`/faculty/sessions/${s._id}`}
-                  className="block rounded-xl border border-gray-200 px-4 py-3 hover:bg-gray-50"
+                  className="block rounded-xl border border-border px-4 py-3 hover:bg-muted/40"
                 >
-                  <p className="font-medium text-gray-900">
+                  <p className="font-medium text-foreground">
                     {s.course?.code} — {s.title}
                   </p>
-                  <p className="text-xs text-gray-500">
+                  <p className="text-xs text-muted-foreground">
                     {s.room}, {s.building}
                   </p>
                 </Link>
@@ -95,11 +95,11 @@ export default function FacultyDashboard() {
         </Card>
 
         <Card className="p-5">
-          <h3 className="mb-3 font-semibold text-gray-900">
+          <h3 className="mb-3 font-semibold text-foreground">
             Today&apos;s Schedule
           </h3>
           {todaySessions.length === 0 ? (
-            <p className="text-sm text-gray-400">
+            <p className="text-sm text-muted-foreground/70">
               No sessions scheduled for today.
             </p>
           ) : (
@@ -107,19 +107,19 @@ export default function FacultyDashboard() {
               {todaySessions.map((s) => (
                 <div
                   key={s._id}
-                  className="flex items-center justify-between rounded-xl border border-gray-200 px-4 py-3"
+                  className="flex items-center justify-between rounded-xl border border-border px-4 py-3"
                 >
                   <div>
-                    <p className="font-medium text-gray-900">
+                    <p className="font-medium text-foreground">
                       {s.course?.code} — {s.title}
                     </p>
-                    <p className="text-xs text-gray-500">
+                    <p className="text-xs text-muted-foreground">
                       {s.startTime} – {s.endTime}
                     </p>
                   </div>
                   <Link
                     to={`/faculty/sessions/${s._id}`}
-                    className="text-sm font-medium text-brand-600"
+                    className="text-sm font-medium text-primary"
                   >
                     Open →
                   </Link>

@@ -18,24 +18,24 @@ export default function StudentCourses() {
     <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
       {courses.map((c) => (
         <Card key={c._id} className="p-5">
-          <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-brand-50 text-brand-600">
+          <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-accent text-primary">
             <BookOpen className="h-5 w-5" />
           </div>
-          <h3 className="mt-3 font-semibold text-gray-900">{c.code}</h3>
-          <p className="text-sm text-gray-500">{c.name}</p>
-          <p className="mt-1 text-xs text-gray-400">
+          <h3 className="mt-3 font-semibold text-foreground">{c.code}</h3>
+          <p className="text-sm text-muted-foreground">{c.name}</p>
+          <p className="mt-1 text-xs text-muted-foreground/70">
             {c.department} · {c.program?.toUpperCase()} Y{c.year}S{c.semester}
           </p>
-          <div className="mt-3 flex items-center justify-between text-sm text-gray-600">
+          <div className="mt-3 flex items-center justify-between text-sm text-muted-foreground">
             <span className="flex items-center gap-1">
               <Users className="h-4 w-4" /> {c.enrolledCount || 0} students
             </span>
-            <span className="font-medium text-gray-900">{c.credits} cr</span>
+            <span className="font-medium text-foreground">{c.credits} cr</span>
           </div>
         </Card>
       ))}
       {courses.length === 0 && (
-        <p className="col-span-full text-center text-sm text-gray-400">
+        <p className="col-span-full text-center text-sm text-muted-foreground/70">
           You are not enrolled in any courses.
         </p>
       )}

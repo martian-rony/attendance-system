@@ -66,7 +66,7 @@ export default function FacultySessionDetail() {
       <div className="space-y-4 lg:col-span-1">
         <Card className="p-5">
           <div className="mb-3 flex items-center justify-between">
-            <h3 className="font-semibold text-gray-900">{session.title}</h3>
+            <h3 className="font-semibold text-foreground">{session.title}</h3>
             <Badge
               color={
                 session.status === "active"
@@ -79,10 +79,10 @@ export default function FacultySessionDetail() {
               {session.status}
             </Badge>
           </div>
-          <p className="text-sm text-gray-500">
+          <p className="text-sm text-muted-foreground">
             {session.course?.code} — {session.course?.name}
           </p>
-          <div className="mt-3 space-y-1 text-sm text-gray-600">
+          <div className="mt-3 space-y-1 text-sm text-muted-foreground">
             <p>📅 {formatDateTime(session.date)}</p>
             <p>
               ⏰ {session.startTime} – {session.endTime}
@@ -120,16 +120,16 @@ export default function FacultySessionDetail() {
 
         {session.status === "active" || session.status === "scheduled" ? (
           <Card className="p-5">
-            <h3 className="mb-3 text-center font-semibold text-gray-900">
+            <h3 className="mb-3 text-center font-semibold text-foreground">
               Scan to Mark Attendance
             </h3>
             <QRDisplay sessionId={id} />
-            <p className="mt-3 text-center text-xs text-gray-400">
+            <p className="mt-3 text-center text-xs text-muted-foreground/70">
               Students scan this QR within the geofence to mark attendance.
             </p>
           </Card>
         ) : (
-          <Card className="p-5 text-center text-sm text-gray-400">
+          <Card className="p-5 text-center text-sm text-muted-foreground/70">
             Session ended. QR no longer active.
           </Card>
         )}
@@ -139,7 +139,7 @@ export default function FacultySessionDetail() {
       <div className="lg:col-span-2">
         <Card className="p-5">
           <div className="mb-4 flex items-center justify-between">
-            <h3 className="flex items-center gap-2 font-semibold text-gray-900">
+            <h3 className="flex items-center gap-2 font-semibold text-foreground">
               <Users className="h-5 w-5" /> Attendance ({records.length})
             </h3>
             <Button
@@ -153,36 +153,36 @@ export default function FacultySessionDetail() {
             </Button>
           </div>
           <div className="overflow-x-auto">
-            <table className="min-w-full divide-y divide-gray-200">
-              <thead className="bg-gray-50">
+            <table className="min-w-full divide-y divide-border">
+              <thead className="bg-muted/40">
                 <tr>
-                  <th className="px-4 py-2 text-left text-xs font-semibold uppercase text-gray-500">
+                  <th className="px-4 py-2 text-left text-xs font-semibold uppercase text-muted-foreground">
                     Student
                   </th>
-                  <th className="px-4 py-2 text-left text-xs font-semibold uppercase text-gray-500">
+                  <th className="px-4 py-2 text-left text-xs font-semibold uppercase text-muted-foreground">
                     Time
                   </th>
-                  <th className="px-4 py-2 text-left text-xs font-semibold uppercase text-gray-500">
+                  <th className="px-4 py-2 text-left text-xs font-semibold uppercase text-muted-foreground">
                     Status
                   </th>
-                  <th className="px-4 py-2 text-left text-xs font-semibold uppercase text-gray-500">
+                  <th className="px-4 py-2 text-left text-xs font-semibold uppercase text-muted-foreground">
                     Method
                   </th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-gray-200">
+              <tbody className="divide-y divide-border">
                 {records.map((r, i) => (
                   <tr
                     key={r._id || r.attendanceId || i}
                     className="animate-fade-in"
                   >
-                    <td className="px-4 py-2 text-sm text-gray-700">
+                    <td className="px-4 py-2 text-sm text-foreground">
                       {r.studentName ||
                         r.student?.fullName ||
                         r.student?.firstName ||
                         "—"}
                     </td>
-                    <td className="px-4 py-2 text-sm text-gray-500">
+                    <td className="px-4 py-2 text-sm text-muted-foreground">
                       {formatDateTime(r.markedAt || r.timestamp)}
                     </td>
                     <td className="px-4 py-2">
@@ -198,7 +198,7 @@ export default function FacultySessionDetail() {
                         {r.status}
                       </Badge>
                     </td>
-                    <td className="px-4 py-2 text-sm text-gray-500">
+                    <td className="px-4 py-2 text-sm text-muted-foreground">
                       {r.method || "qr"}
                     </td>
                   </tr>
@@ -207,7 +207,7 @@ export default function FacultySessionDetail() {
                   <tr>
                     <td
                       colSpan={4}
-                      className="px-4 py-8 text-center text-sm text-gray-400"
+                      className="px-4 py-8 text-center text-sm text-muted-foreground/70"
                     >
                       No attendance marked yet.
                     </td>
