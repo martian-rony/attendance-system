@@ -95,6 +95,7 @@ export default function StudentScan() {
       markMutation.mutate({
         sessionId: payload.sessionId,
         qrToken: payload.qrCode || payload.token,
+        rotatingToken: payload.rt,
         geolocation: location
           ? {
               coordinates: [location.longitude, location.latitude],

@@ -4,6 +4,7 @@ import { connectDB } from './config/database.js';
 import { logger } from './utils/logger.js';
 import { initializeSocket } from './socket/handlers.js';
 import { seedDatabase } from './scripts/seed.js';
+import { startSessionScheduler } from './services/sessionScheduler.js';
 import User from './models/User.js';
 import http from 'http';
 
@@ -44,6 +45,9 @@ const startServer = async () => {
       logger.info(`API available at http://localhost:${PORT}/api`);
       logger.info(`Health check at http://localhost:${PORT}/health`);
     });
+
+    // Start the auto open/close scheduler for recurring/timetable sessions.
+    startSessionScheduler();
   } catch (error) {
     // Use console.error directly so the failure is always visible on the
     // host (Render captures stderr) even if the logger transport doesn't flush

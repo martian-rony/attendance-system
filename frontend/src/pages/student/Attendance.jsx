@@ -1,20 +1,31 @@
 import { useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Select } from "../../components/ui/index.jsx";
-import { courseAPI, attendanceAPI } from "../../api/index.js";
+import { courseAPI, attendanceAPI, correctionAPI } from "../../api/index.js";
 import {
   Card,
   LoadingScreen,
   ErrorAlert,
   DataTable,
   Badge,
+  Button,
+  Modal,
 } from "../../components/ui/index.jsx";
+import { Textarea, Select as FormSelect, Input } from "../../components/ui/form.jsx";
 import { useAuth } from "../../contexts/AuthContext.jsx";
 import { formatDateTime } from "../../utils/helpers.js";
 
 export default function StudentAttendance() {
   const { user } = useAuth();
+  const queryClient = useQueryClient();
   const [courseId, setCourseId] = useState("");
+  const [dispute, setDispute] = useState(null); // the row being disputed
+  const [form, setForm] = useState({
+    requestedStatus: "present",
+    reason: "",
+    evidenceUrl: "",
+  });
+  const [formError, setFormError] = useState("");
 
   const { data: courses } = useQuery({
     queryKey: ["student-courses"],
@@ -26,6 +37,43 @@ export default function StudentAttendance() {
     queryFn: () =>
       attendanceAPI.getStudent(user._id, courseId ? { courseId } : {}),
   });
+
+  const createMutation = useMutation({
+    mutationFn: (payload) => correctionAPI.create(payload),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["student-attendance"] });
+      closeDispute();
+    },
+    onError: (err) => {
+      setFormError(
+        err.response?.data?.message || "Failed to submit correction request",
+      );
+    },
+  });
+
+  const openDispute = (row) => {
+    setDispute(row);
+    setForm({ requestedStatus: "present", reason: "", evidenceUrl: "" });
+    setFormError("");
+  };
+  const closeDispute = () => setDispute(null);
+
+  const submitDispute = () => {
+    setFormError("");
+    if (!form.reason || form.reason.trim().length < 5) {
+      setFormError("Please give a reason (at least 5 characters).");
+      return;
+    }
+    const sessionId = dispute?.session?._id || dispute?.session;
+    createMutation.mutate({
+      sessionId,
+      requestedStatus: form.requestedStatus,
+      reason: form.reason.trim(),
+      ...(form.evidenceUrl.trim()
+        ? { evidenceUrl: form.evidenceUrl.trim() }
+        : {}),
+    });
+  };
 
   if (isLoading) return <LoadingScreen />;
   if (error) return <ErrorAlert message="Failed to load attendance" />;
@@ -69,7 +117,16 @@ export default function StudentAttendance() {
         </Badge>
       ),
     },
-    { key: "method", header: "Method", render: (v) => v || "qr" },
+    {
+      key: "actions",
+      header: "",
+      render: (_, row) =>
+        row.session ? (
+          <Button size="sm" variant="secondary" onClick={() => openDispute(row)}>
+            Dispute
+          </Button>
+        ) : null,
+    },
   ];
 
   return (
@@ -100,6 +157,73 @@ export default function StudentAttendance() {
           emptyMessage="No attendance records yet"
         />
       </Card>
+
+      <Modal
+        open={!!dispute}
+        onClose={closeDispute}
+        title="Request attendance correction"
+        footer={
+          <div className="flex justify-end gap-2">
+            <Button variant="secondary" onClick={closeDispute}>
+              Cancel
+            </Button>
+            <Button
+              onClick={submitDispute}
+              disabled={createMutation.isLoading}
+            >
+              {createMutation.isLoading ? "Submitting…" : "Submit request"}
+            </Button>
+          </div>
+        }
+      >
+        <div className="space-y-3">
+          <p className="text-sm text-gray-600">
+            {dispute?.session?.title || "This session"} — current status:{" "}
+            <span className="font-medium">{dispute?.status}</span>
+          </p>
+          <div>
+            <label className="mb-1 block text-sm font-medium text-gray-700">
+              Requested status
+            </label>
+            <FormSelect
+              value={form.requestedStatus}
+              onChange={(e) =>
+                setForm((f) => ({ ...f, requestedStatus: e.target.value }))
+              }
+            >
+              <option value="present">Present</option>
+              <option value="late">Late</option>
+              <option value="excused">Excused</option>
+            </FormSelect>
+          </div>
+          <div>
+            <label className="mb-1 block text-sm font-medium text-gray-700">
+              Reason
+            </label>
+            <Textarea
+              rows={3}
+              placeholder="Explain why this record should be corrected…"
+              value={form.reason}
+              onChange={(e) =>
+                setForm((f) => ({ ...f, reason: e.target.value }))
+              }
+            />
+          </div>
+          <div>
+            <label className="mb-1 block text-sm font-medium text-gray-700">
+              Evidence URL (optional)
+            </label>
+            <Input
+              placeholder="https://…"
+              value={form.evidenceUrl}
+              onChange={(e) =>
+                setForm((f) => ({ ...f, evidenceUrl: e.target.value }))
+              }
+            />
+          </div>
+          {formError && <p className="text-sm text-danger-600">{formError}</p>}
+        </div>
+      </Modal>
     </div>
   );
 }

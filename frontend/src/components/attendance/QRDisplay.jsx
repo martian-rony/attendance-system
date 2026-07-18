@@ -12,21 +12,31 @@ export function QRDisplay({ sessionId, className }) {
 
   useEffect(() => {
     let cancelled = false;
-    const load = async () => {
-      setLoading(true);
+    let refreshTimer = null;
+
+    const load = async (isRefresh = false) => {
+      if (!isRefresh) setLoading(true);
       try {
         const { data } = await sessionAPI.getQR(sessionId);
-        if (!cancelled) setQr(data.data);
+        if (cancelled) return;
+        setQr(data.data);
+        // Schedule the next refresh just after the rotating token rolls over,
+        // so the displayed QR always carries a currently-valid token.
+        const expiresInMs = data.data?.rotating?.expiresInMs;
+        if (expiresInMs && expiresInMs > 0) {
+          refreshTimer = setTimeout(() => load(true), expiresInMs + 500);
+        }
       } catch (err) {
         if (!cancelled)
           setError(err.response?.data?.message || "Failed to load QR");
       } finally {
-        if (!cancelled) setLoading(false);
+        if (!cancelled && !isRefresh) setLoading(false);
       }
     };
     load();
     return () => {
       cancelled = true;
+      if (refreshTimer) clearTimeout(refreshTimer);
     };
   }, [sessionId]);
 

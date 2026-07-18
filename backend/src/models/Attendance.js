@@ -52,6 +52,9 @@ const attendanceSchema = new mongoose.Schema(
           type: [Number], // [longitude, latitude]
           validate: {
             validator: function (v) {
+              // Empty array = coordinates not captured (e.g. admin correction
+              // approval, or server-side fix) — allowed.
+              if (!Array.isArray(v) || v.length === 0) return true;
               return v.length === 2 && v[0] >= -180 && v[0] <= 180 && v[1] >= -90 && v[1] <= 90;
             },
             message: 'Invalid coordinates [longitude, latitude]',

@@ -22,6 +22,13 @@ router.post(
   sessionController.createSession
 );
 
+// Create a recurring weekly series (faculty/admin)
+router.post(
+  '/recurring',
+  restrictTo('admin', 'faculty'),
+  sessionController.createRecurringSessions
+);
+
 // Session-specific
 router.get('/:id', validate(idParamSchema), sessionController.getSession);
 router.patch('/:id', validate(updateSessionSchema), sessionController.updateSession);

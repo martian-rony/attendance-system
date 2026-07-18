@@ -1,21 +1,17 @@
 import express from 'express';
+import * as notificationController from '../controllers/notificationController.js';
 import { protect } from '../middlewares/auth.js';
+import { validate } from '../validators/index.js';
+import { idParamSchema } from '../validators/index.js';
 
 const router = express.Router();
 
-// Placeholder notification routes (expanded in real-time phase)
 router.use(protect);
 
-router.get('/', (req, res) => {
-  res.status(200).json({ success: true, data: { notifications: [] } });
-});
-
-router.patch('/:id/read', (req, res) => {
-  res.status(200).json({ success: true, message: 'Notification marked as read' });
-});
-
-router.patch('/read-all', (req, res) => {
-  res.status(200).json({ success: true, message: 'All notifications marked as read' });
-});
+router.get('/', notificationController.getNotifications);
+router.get('/unread-count', notificationController.getUnreadCount);
+router.patch('/read-all', notificationController.markAllAsRead);
+router.patch('/:id/read', validate(idParamSchema), notificationController.markAsRead);
+router.delete('/:id', validate(idParamSchema), notificationController.deleteNotification);
 
 export default router;

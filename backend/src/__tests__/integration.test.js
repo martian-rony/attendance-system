@@ -221,6 +221,10 @@ test('full attendance flow: QR + geolocation + Socket.io', async () => {
     sessionId,
     qrToken,
     geolocation: insideGeo,
+    // A distinct device fingerprint — the anti-proxy device-reuse guard blocks
+    // two DIFFERENT students marking from the SAME device. A real second
+    // student presents a distinct device id (or distinct User-Agent/IP).
+    deviceInfo: { fingerprint: 'distinct-device-student2', userAgent: 'test-device-student2' },
   });
   ok('student2 marks -> 201', mark2.status === 201);
   const evt2 = await Promise.race([

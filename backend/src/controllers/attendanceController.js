@@ -7,6 +7,7 @@ import { AppError, NotFoundError, AuthorizationError, ValidationError } from '..
 import { logger } from '../utils/logger.js';
 import AuditLog from '../models/AuditLog.js';
 import crypto from 'crypto';
+import { notify } from '../services/notificationService.js';
 
 const calculateDistance = (lat1, lon1, lat2, lon2) => {
   const R = 6371e3; // Earth radius in meters
@@ -57,6 +58,19 @@ export const markAttendance = async (req, res, next) => {
       return next(new ValidationError(qrValidation.reason));
     }
 
+    // Anti-screenshot: if the session enforces rotating QR, require a valid
+    // short-lived rotating token alongside the static QR token.
+    if (session.settings?.rotatingQR) {
+      const rt = req.body.rotatingToken;
+      if (!session.validateRotatingToken(rt)) {
+        return next(
+          new ValidationError(
+            'This QR code has expired. Scan the live code shown by your faculty (it refreshes every few seconds).'
+          )
+        );
+      }
+    }
+
     // Check if student is enrolled
     const enrollment = await Enrollment.findOne({
       student: req.user._id,
@@ -76,6 +90,45 @@ export const markAttendance = async (req, res, next) => {
 
     if (existingAttendance) {
       return next(new ValidationError('Attendance already marked for this session'));
+    }
+
+    // Anti-proxy: detect the same physical device marking for a second student
+    // in this session. Fingerprint = client-supplied fingerprint if present,
+    // else a server-derived hash of userAgent + IP. Never blocks the first
+    // marker; only a second, different student on the same device.
+    const deviceFingerprint =
+      deviceInfo?.fingerprint ||
+      crypto
+        .createHash('sha256')
+        .update(`${req.get('User-Agent') || ''}|${req.ip || ''}`)
+        .digest('hex')
+        .substring(0, 32);
+
+    if (session.settings?.blockDeviceReuse !== false) {
+      const deviceAlreadyUsed = await Attendance.findOne({
+        session: sessionId,
+        'verification.deviceInfo.fingerprint': deviceFingerprint,
+        student: { $ne: req.user._id },
+      }).select('_id student');
+
+      if (deviceAlreadyUsed) {
+        // Audit the blocked attempt for faculty review.
+        await AuditLog.log({
+          user: req.user._id,
+          action: 'ATTENDANCE_DEVICE_REUSE_BLOCKED',
+          resource: 'Session',
+          resourceId: sessionId,
+          success: false,
+          details: { deviceFingerprint, conflictingStudent: deviceAlreadyUsed.student },
+          ip: req.ip,
+          userAgent: req.get('User-Agent'),
+        });
+        return next(
+          new ValidationError(
+            'This device has already been used to mark attendance for another student in this session.'
+          )
+        );
+      }
     }
 
     // Geolocation verification
@@ -153,7 +206,12 @@ export const markAttendance = async (req, res, next) => {
               timestamp: geolocation.timestamp ? new Date(geolocation.timestamp) : now,
             }
           : undefined,
-        deviceInfo,
+        deviceInfo: {
+          ...(deviceInfo || {}),
+          fingerprint: deviceFingerprint,
+          userAgent: deviceInfo?.userAgent || req.get('User-Agent'),
+          ip: req.ip,
+        },
       },
     });
 
@@ -188,6 +246,18 @@ export const markAttendance = async (req, res, next) => {
       studentName: `${req.user.firstName} ${req.user.lastName}`,
       status,
       timestamp: now,
+    });
+
+    // Persistent confirmation notification to the student.
+    notify({
+      recipient: req.user._id,
+      type: 'attendance_marked',
+      title: 'Attendance recorded',
+      body: `You were marked ${status} for ${session.course.code || 'your class'}${
+        minutesLate > 0 ? ` (${minutesLate} min late)` : ''
+      }.`,
+      link: '/student/attendance',
+      data: { sessionId, courseId: session.course._id, status },
     });
 
     res.status(201).json({

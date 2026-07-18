@@ -20,6 +20,8 @@ import sessionRoutes from './routes/sessionRoutes.js';
 import attendanceRoutes from './routes/attendanceRoutes.js';
 import reportRoutes from './routes/reportRoutes.js';
 import notificationRoutes from './routes/notificationRoutes.js';
+import correctionRoutes from './routes/correctionRoutes.js';
+import importRoutes from './routes/importRoutes.js';
 import path from 'path';
 import fs from 'fs';
 import { fileURLToPath } from 'url';
@@ -134,6 +136,8 @@ app.use('/api/sessions', sessionRoutes);
 app.use('/api/attendance', attendanceRoutes);
 app.use('/api/reports', reportRoutes);
 app.use('/api/notifications', notificationRoutes);
+app.use('/api/corrections', correctionRoutes);
+app.use('/api/import', importRoutes);
 
 // Serve the built frontend (production single-service deploy).
 // In dev the Vite proxy handles this; in prod we serve dist statically so

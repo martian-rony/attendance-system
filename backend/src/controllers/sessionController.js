@@ -4,10 +4,11 @@ import Attendance from '../models/Attendance.js';
 import Enrollment from '../models/Enrollment.js';
 import User from '../models/User.js';
 import QRCode from 'qrcode';
-import { AppError, NotFoundError, AuthorizationError } from '../utils/AppError.js';
+import { AppError, NotFoundError, AuthorizationError, ValidationError } from '../utils/AppError.js';
 import { logger } from '../utils/logger.js';
 import AuditLog from '../models/AuditLog.js';
 import crypto from 'crypto';
+import { notifyCourseStudents } from '../services/notificationService.js';
 
 export const createSession = async (req, res, next) => {
   try {
@@ -98,6 +99,133 @@ export const createSession = async (req, res, next) => {
     res.status(201).json({
       success: true,
       data: { session },
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+/**
+ * POST /api/sessions/recurring
+ * Create a weekly recurring series of sessions from a timetable spec.
+ * Body: {
+ *   courseId, title, description, startTime, endTime, room, settings,
+ *   location, geofenceRadius,
+ *   daysOfWeek: [1,3,5]  // 0=Sun..6=Sat
+ *   startDate: 'YYYY-MM-DD', endDate: 'YYYY-MM-DD'
+ * }
+ * Generates one session per matching weekday between startDate and endDate
+ * (inclusive). Capped at 200 sessions per call.
+ */
+export const createRecurringSessions = async (req, res, next) => {
+  try {
+    const {
+      courseId,
+      title,
+      description,
+      startTime,
+      endTime,
+      room,
+      settings,
+      location,
+      geofenceRadius,
+      daysOfWeek,
+      startDate,
+      endDate,
+    } = req.body;
+
+    if (!Array.isArray(daysOfWeek) || daysOfWeek.length === 0) {
+      return next(new ValidationError('daysOfWeek must be a non-empty array of 0-6'));
+    }
+    if (!startDate || !endDate) {
+      return next(new ValidationError('startDate and endDate are required'));
+    }
+    if (!/^([01]?[0-9]|2[0-3]):[0-5][0-9]$/.test(startTime || '')) {
+      return next(new ValidationError('startTime must be HH:MM'));
+    }
+    if (!/^([01]?[0-9]|2[0-3]):[0-5][0-9]$/.test(endTime || '')) {
+      return next(new ValidationError('endTime must be HH:MM'));
+    }
+
+    const course = await Course.findById(courseId);
+    if (!course) return next(new NotFoundError('Course'));
+    if (req.user.role === 'faculty' && course.faculty.toString() !== req.user._id.toString()) {
+      return next(new AuthorizationError('You can only create sessions for your own courses'));
+    }
+
+    const start = new Date(startDate);
+    const end = new Date(endDate);
+    start.setHours(0, 0, 0, 0);
+    end.setHours(23, 59, 59, 999);
+    if (isNaN(start) || isNaN(end) || start > end) {
+      return next(new ValidationError('Invalid date range'));
+    }
+
+    const wanted = new Set(daysOfWeek.map(Number));
+    const [sh, sm] = startTime.split(':').map(Number);
+    const [eh, em] = endTime.split(':').map(Number);
+
+    const sessionDocs = [];
+    for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
+      if (!wanted.has(d.getDay())) continue;
+
+      const sDT = new Date(d);
+      sDT.setHours(sh, sm, 0, 0);
+      const eDT = new Date(d);
+      eDT.setHours(eh, em, 0, 0);
+
+      sessionDocs.push({
+        course: courseId,
+        faculty: req.user._id,
+        title: title || `${course.code} class`,
+        description,
+        date: new Date(d.getFullYear(), d.getMonth(), d.getDate()),
+        startTime,
+        endTime,
+        startDateTime: sDT,
+        endDateTime: eDT,
+        room,
+        settings: {
+          allowLateEntry: settings?.allowLateEntry ?? course.settings.allowLateEntry,
+          lateThreshold: settings?.lateThreshold ?? course.settings.lateThreshold,
+          requireGeolocation: settings?.requireGeolocation ?? course.settings.requireGeolocation,
+        },
+        attendanceWindow: {
+          openBefore: settings?.attendanceWindow?.openBefore ?? 10,
+          closeAfter: settings?.attendanceWindow?.closeAfter ?? 30,
+        },
+        location: location || course.location,
+        geofenceRadius: geofenceRadius || course.geofenceRadius,
+      });
+
+      if (sessionDocs.length > 200) {
+        return next(new ValidationError('Too many sessions (max 200). Narrow the date range.'));
+      }
+    }
+
+    if (sessionDocs.length === 0) {
+      return next(new ValidationError('No dates matched the selected weekdays in that range'));
+    }
+
+    const created = await Session.insertMany(sessionDocs);
+    // Generate QR codes for each (needed before a session can be started).
+    await Promise.all(created.map((s) => s.generateQRCode()));
+
+    await AuditLog.log({
+      user: req.user._id,
+      action: 'SESSIONS_RECURRING_CREATED',
+      resource: 'Session',
+      resourceId: courseId,
+      details: { count: created.length, daysOfWeek, startDate, endDate },
+      ip: req.ip,
+      userAgent: req.get('User-Agent'),
+    });
+
+    req.io?.to('role:admin').emit('session:created', { bulk: true, courseId });
+
+    res.status(201).json({
+      success: true,
+      data: { count: created.length, sessionIds: created.map((s) => s._id) },
     });
   } catch (error) {
     next(error);
@@ -354,6 +482,15 @@ export const startSession = async (req, res, next) => {
       courseId: session.course,
     });
 
+    // Persistent notification to every enrolled student.
+    notifyCourseStudents(session.course, {
+      type: 'session_started',
+      title: 'Attendance session started',
+      body: `${session.title || 'A session'} is now open. Scan the QR code to mark your attendance.`,
+      link: '/student/scan',
+      data: { sessionId: session._id, courseId: session.course },
+    });
+
     // Generate QR code image
     const qrCodeImage = await QRCode.toDataURL(session.qrCode.data, {
       width: 400,
@@ -458,8 +595,16 @@ export const getSessionQR = async (req, res, next) => {
       await session.generateQRCode();
     }
 
-    // Generate QR code image
-    const qrCodeImage = await QRCode.toDataURL(session.qrCode.data, {
+    // Rotating token (anti-screenshot). Always computed; the faculty display
+    // embeds it in the QR payload and auto-refreshes. Students only need it
+    // when the session enforces settings.rotatingQR, but sending it always
+    // keeps the client simple.
+    const rotating = session.getRotatingToken();
+    const staticData = JSON.parse(session.qrCode.data);
+    const qrPayload = JSON.stringify({ ...staticData, rt: rotating.rt });
+
+    // Generate QR code image with the rotating token embedded.
+    const qrCodeImage = await QRCode.toDataURL(qrPayload, {
       width: 400,
       margin: 2,
     });
@@ -467,8 +612,10 @@ export const getSessionQR = async (req, res, next) => {
     res.status(200).json({
       success: true,
       data: {
-        qrCode: session.qrCode,
+        qrCode: { ...session.qrCode.toObject(), data: qrPayload },
         qrCodeImage,
+        rotating,
+        rotatingEnforced: !!session.settings?.rotatingQR,
         windowOpenTime: session.windowOpenTime,
         windowCloseTime: session.windowCloseTime,
       },

@@ -2,8 +2,9 @@ import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useNavigate } from "react-router-dom";
 import { useForm } from "react-hook-form";
-import { Plus, Search, UserX, UserCheck } from "lucide-react";
+import { Plus, Search, UserX, UserCheck, Upload } from "lucide-react";
 import { userAPI } from "../../api/index.js";
+import { ImportStudentsModal } from "../../components/admin/ImportStudentsModal.jsx";
 import {
   Card,
   Button,
@@ -35,6 +36,7 @@ export default function AdminUsers() {
   const [page, setPage] = useState(1);
   const [confirmDeactivate, setConfirmDeactivate] = useState(null);
   const [createOpen, setCreateOpen] = useState(false);
+  const [importOpen, setImportOpen] = useState(false);
 
   const {
     register,
@@ -170,10 +172,18 @@ export default function AdminUsers() {
             <option value="student">Student</option>
           </Select>
         </div>
+        <Button variant="secondary" onClick={() => setImportOpen(true)}>
+          <Upload className="h-4 w-4" /> Import CSV
+        </Button>
         <Button onClick={() => setCreateOpen(true)}>
           <Plus className="h-4 w-4" /> Add User
         </Button>
       </div>
+
+      <ImportStudentsModal
+        open={importOpen}
+        onClose={() => setImportOpen(false)}
+      />
 
       <Card>
         <DataTable

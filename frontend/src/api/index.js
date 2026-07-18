@@ -49,6 +49,7 @@ export const sessionAPI = {
   getAll: (params = {}) => api.get("/sessions", { params }),
   getById: (id) => api.get(`/sessions/${id}`),
   create: (data) => api.post("/sessions", data),
+  createRecurring: (data) => api.post("/sessions/recurring", data),
   update: (id, data) => api.patch(`/sessions/${id}`, data),
   delete: (id) => api.delete(`/sessions/${id}`),
   start: (id) => api.post(`/sessions/${id}/start`),
@@ -88,4 +89,29 @@ export const reportAPI = {
   getLowAttendance: (params = {}) =>
     api.get("/reports/low-attendance", { params }),
   getAuditLogs: (params = {}) => api.get("/reports/audit-logs", { params }),
+};
+
+export const notificationAPI = {
+  getAll: (params = {}) => api.get("/notifications", { params }),
+  getUnreadCount: () => api.get("/notifications/unread-count"),
+  markRead: (id) => api.patch(`/notifications/${id}/read`),
+  markAllRead: () => api.patch("/notifications/read-all"),
+  remove: (id) => api.delete(`/notifications/${id}`),
+};
+
+export const correctionAPI = {
+  getAll: (params = {}) => api.get("/corrections", { params }),
+  create: (data) => api.post("/corrections", data),
+  resolve: (id, data) => api.patch(`/corrections/${id}/resolve`, data),
+};
+
+export const importAPI = {
+  importStudents: (csv, defaultPassword) =>
+    api.post("/import/students", { csv, defaultPassword }),
+  importEnrollments: (courseId, csv) =>
+    api.post(`/import/courses/${courseId}/enroll`, { csv }),
+  studentTemplate: () =>
+    api.get("/import/template/students", { responseType: "blob" }),
+  exportRoster: (courseId) =>
+    api.get(`/import/courses/${courseId}/roster.csv`, { responseType: "blob" }),
 };

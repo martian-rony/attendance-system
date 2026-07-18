@@ -1,8 +1,9 @@
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useNavigate } from "react-router-dom";
-import { Plus, Play, Square, LocateFixed, Loader2 } from "lucide-react";
+import { Plus, Play, Square, LocateFixed, Loader2, CalendarRange } from "lucide-react";
 import { sessionAPI, courseAPI } from "../../api/index.js";
+import { RecurringSessionModal } from "../../components/attendance/RecurringSessionModal.jsx";
 import {
   Card,
   Button,
@@ -48,6 +49,7 @@ export default function FacultySessions() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const [createOpen, setCreateOpen] = useState(false);
+  const [recurringOpen, setRecurringOpen] = useState(false);
 
   const { data: courses } = useQuery({
     queryKey: ["faculty-courses"],
@@ -154,7 +156,10 @@ export default function FacultySessions() {
 
   return (
     <div className="space-y-4">
-      <div className="flex justify-end">
+      <div className="flex justify-end gap-2">
+        <Button variant="secondary" onClick={() => setRecurringOpen(true)}>
+          <CalendarRange className="h-4 w-4" /> Recurring
+        </Button>
         <Button
           onClick={() => {
             reset(sessionDefaults());
@@ -164,6 +169,12 @@ export default function FacultySessions() {
           <Plus className="h-4 w-4" /> New Session
         </Button>
       </div>
+
+      <RecurringSessionModal
+        open={recurringOpen}
+        onClose={() => setRecurringOpen(false)}
+        courses={myCourses}
+      />
 
       <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
         {sessions.map((s) => (

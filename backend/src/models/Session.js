@@ -126,6 +126,14 @@ const sessionSchema = new mongoose.Schema(
       allowLateEntry: { type: Boolean, default: true },
       lateThreshold: { type: Number, default: 15, min: 1, max: 60 },
       requireGeolocation: { type: Boolean, default: true },
+      // Anti-screenshot: when true, students must present a valid short-lived
+      // rotating token (in addition to QR + geo). Off by default so existing
+      // flows are unaffected until a faculty opts in.
+      rotatingQR: { type: Boolean, default: false },
+      // Anti-proxy: block a second student marking from the same device in the
+      // same session. On by default — purely additive, never blocks a normal
+      // single-student scan.
+      blockDeviceReuse: { type: Boolean, default: true },
     },
     status: {
       type: String,
@@ -176,6 +184,7 @@ sessionSchema.virtual('isActive').get(function () {
 // strings only for legacy docs that lack startDateTime.
 sessionSchema.virtual('sessionDateTime').get(function () {
   if (this.startDateTime) return this.startDateTime;
+  if (!this.startTime) return null;
   const [hours, minutes] = this.startTime.split(':');
   const d = new Date(this.date);
   return new Date(
@@ -192,6 +201,7 @@ sessionSchema.virtual('sessionDateTime').get(function () {
 // Virtual for session end datetime
 sessionSchema.virtual('sessionEndDateTime').get(function () {
   if (this.endDateTime) return this.endDateTime;
+  if (!this.endTime) return null;
   const [hours, minutes] = this.endTime.split(':');
   const dt = new Date(this.date);
   dt.setHours(parseInt(hours), parseInt(minutes), 0, 0);
@@ -202,27 +212,34 @@ sessionSchema.virtual('sessionEndDateTime').get(function () {
 sessionSchema.virtual('windowOpenTime').get(function () {
   const openBefore = this.attendanceWindow?.openBefore ?? 10;
   const dt = this.sessionDateTime;
-  dt.setMinutes(dt.getMinutes() - openBefore);
-  return dt;
+  if (!dt || !(dt instanceof Date)) return null;
+  const out = new Date(dt.getTime());
+  out.setMinutes(out.getMinutes() - openBefore);
+  return out;
 });
 
 // Virtual for attendance window close time
 sessionSchema.virtual('windowCloseTime').get(function () {
   const closeAfter = this.attendanceWindow?.closeAfter ?? 30;
   const dt = this.sessionDateTime;
-  dt.setMinutes(dt.getMinutes() + closeAfter);
+  if (!dt || !(dt instanceof Date)) return null;
+  const out = new Date(dt.getTime());
+  out.setMinutes(out.getMinutes() + closeAfter);
   // Never close the window before the class actually ends — for any session
   // longer than `closeAfter` minutes, stay open through the whole period so a
   // student inside the geofence and inside the scheduled time can still mark.
   // If `closeAfter` is larger than the session length, that later time wins.
   const end = this.sessionEndDateTime;
-  return end.getTime() > dt.getTime() ? end : dt;
+  return end && end instanceof Date && end.getTime() > out.getTime() ? end : out;
 });
 
 // Virtual for is within attendance window
 sessionSchema.virtual('isWithinWindow').get(function () {
+  const open = this.windowOpenTime;
+  const close = this.windowCloseTime;
+  if (!open || !close) return false;
   const now = new Date();
-  return now >= this.windowOpenTime && now <= this.windowCloseTime;
+  return now >= open && now <= close;
 });
 
 // Method to generate QR code
@@ -404,6 +421,56 @@ sessionSchema.statics.getTodaysSessions = function (facultyId) {
     .populate('course', 'code name')
     .populate('faculty', 'firstName lastName')
     .sort({ startTime: 1 });
+};
+
+// ── Rotating QR token (anti-screenshot) ────────────────────────────────────
+// The static per-session token above stays valid for backward compatibility,
+// but an active session also carries a SHORT-LIVED rotating token that changes
+// every ROTATION_SECONDS. The faculty display auto-refreshes; a screenshotted
+// QR shared to an absent friend is useless once the step rolls over.
+const ROTATION_SECONDS = parseInt(process.env.QR_ROTATION_SECONDS, 10) || 30;
+
+// Current time-step index (integer that increments every ROTATION_SECONDS).
+function currentStep(atMs = Date.now()) {
+  return Math.floor(atMs / 1000 / ROTATION_SECONDS);
+}
+
+// Deterministic rolling token for a given step, bound to this specific session
+// and the server secret. Not guessable without QR_CODE_SECRET.
+sessionSchema.methods.rotatingTokenForStep = function (step) {
+  const secret = process.env.QR_CODE_SECRET;
+  if (!secret) throw new Error('QR_CODE_SECRET is not configured');
+  return crypto
+    .createHmac('sha256', secret)
+    .update(`${this._id.toString()}:${this.course.toString()}:${step}`)
+    .digest('hex')
+    .substring(0, 16);
+};
+
+// Token for the current step, plus when it expires (start of next step).
+sessionSchema.methods.getRotatingToken = function () {
+  const step = currentStep();
+  return {
+    rt: this.rotatingTokenForStep(step),
+    rotationSeconds: ROTATION_SECONDS,
+    // ms until this token rolls over — lets the client schedule a refresh.
+    expiresInMs: (step + 1) * ROTATION_SECONDS * 1000 - Date.now(),
+  };
+};
+
+// Validate a rotating token allowing ±1 step of clock skew / scan latency
+// (i.e. a token is accepted for up to ~2×ROTATION_SECONDS).
+sessionSchema.methods.validateRotatingToken = function (rt) {
+  if (!rt || typeof rt !== 'string') return false;
+  const step = currentStep();
+  for (const s of [step, step - 1, step + 1]) {
+    // constant-time compare to avoid timing leaks
+    const expected = this.rotatingTokenForStep(s);
+    if (expected.length === rt.length && crypto.timingSafeEqual(Buffer.from(expected), Buffer.from(rt))) {
+      return true;
+    }
+  }
+  return false;
 };
 
 const Session = mongoose.model('Session', sessionSchema);

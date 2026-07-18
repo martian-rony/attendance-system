@@ -5,6 +5,7 @@ import User from '../models/User.js';
 import { AppError, NotFoundError, AuthorizationError } from '../utils/AppError.js';
 import { logger } from '../utils/logger.js';
 import AuditLog from '../models/AuditLog.js';
+import { notify } from '../services/notificationService.js';
 
 export const createCourse = async (req, res, next) => {
   try {
@@ -316,6 +317,18 @@ export const enrollStudents = async (req, res, next) => {
       },
       ip: req.ip,
       userAgent: req.get('User-Agent'),
+    });
+
+    // Notify each newly-enrolled student.
+    results.enrolled.forEach((e) => {
+      notify({
+        recipient: e.studentId,
+        type: 'enrollment_added',
+        title: 'Enrolled in a new course',
+        body: `You have been enrolled in ${course.code} - ${course.name}.`,
+        link: '/student/courses',
+        data: { courseId: course._id },
+      });
     });
 
     res.status(200).json({

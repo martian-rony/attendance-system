@@ -320,6 +320,7 @@ export const markAttendanceSchema = z.object({
   body: z.object({
     sessionId: z.string().regex(/^[0-9a-fA-F]{24}$/, 'Invalid session ID'),
     qrToken: z.string().optional(),
+    rotatingToken: z.string().optional(),
     geolocation: z
       .object({
         coordinates: z.tuple([z.number().min(-180).max(180), z.number().min(-90).max(90)]),
@@ -413,6 +414,22 @@ export const filterSchema = z.object({
 export const idParamSchema = z.object({
   params: z.object({
     id: z.string().regex(/^[0-9a-fA-F]{24}$/, 'Invalid ID format'),
+  }),
+});
+
+export const createCorrectionSchema = z.object({
+  body: z.object({
+    sessionId: z.string().regex(/^[0-9a-fA-F]{24}$/, 'Invalid session ID'),
+    requestedStatus: z.enum(['present', 'late', 'excused']),
+    reason: z.string().min(5).max(1000),
+    evidenceUrl: z.string().url().optional().or(z.literal('')),
+  }),
+});
+
+export const resolveCorrectionSchema = z.object({
+  body: z.object({
+    decision: z.enum(['approved', 'rejected']),
+    resolutionNote: z.string().max(1000).optional(),
   }),
 });
 

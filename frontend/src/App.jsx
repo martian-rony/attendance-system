@@ -19,6 +19,7 @@ import FacultyCourses from "./pages/faculty/Courses.jsx";
 import FacultySessions from "./pages/faculty/Sessions.jsx";
 import FacultySessionDetail from "./pages/faculty/SessionDetail.jsx";
 import FacultyReports from "./pages/faculty/Reports.jsx";
+import FacultyCorrections from "./pages/faculty/Corrections.jsx";
 
 import StudentDashboard from "./pages/student/Dashboard.jsx";
 import StudentCourses from "./pages/student/Courses.jsx";
@@ -180,6 +181,14 @@ export default function App() {
           element={
             <RoleLayout role="faculty" title="Reports">
               <FacultyReports />
+            </RoleLayout>
+          }
+        />
+        <Route
+          path="/faculty/corrections"
+          element={
+            <RoleLayout role="faculty" title="Corrections">
+              <FacultyCorrections />
             </RoleLayout>
           }
         />
