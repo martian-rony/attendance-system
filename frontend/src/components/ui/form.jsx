@@ -134,7 +134,7 @@ export function DataTable({
         <tbody className="divide-y divide-gray-200 bg-white">
           {data.map((row, idx) => (
             <tr
-              key={row._id || idx}
+              key={`${row._id ?? "row"}-${idx}`}
               onClick={() => onRowClick?.(row)}
               className={cn(
                 "transition-colors",
